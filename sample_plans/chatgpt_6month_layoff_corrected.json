@@ -1,0 +1,20 @@
+{
+    "target_population": "healthy_adult_18plus",
+    "goal": "general",
+    "inactivity_duration_weeks": 26,
+    "plan_follows_long_inactivity_track": true,
+    "weeks_since_return": 1,
+    "sessions_per_week": 2,
+    "sets_per_exercise": 2,
+    "plan_week_parameters": {
+        "1": {
+            "sets": 2,
+            "reps": "5-6",
+            "intensity_percent_1RM": null,
+            "rest_minutes": 5,
+            "frequency_days_per_week": 2
+        }
+    },
+    "program_mandates_training_to_failure": false,
+    "weekly_sets_per_muscle_group": 4
+}

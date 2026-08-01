@@ -1,0 +1,581 @@
+{
+  "ruleset_id": "L1-CSCCa-ReturnToTraining-v1",
+  "source_documents": [
+    {
+      "id": "CSCCa-NSCA-2019",
+      "citation": "Caterisano A, Decker D, Snyder B, et al. CSCCa and NSCA Joint Consensus Guidelines for Transition Periods: Safe Return to Training Following Inactivity. Strength Cond J. 2019;41(3):1-23."
+    },
+    {
+      "id": "ECSS-ACSM-2013",
+      "citation": "Meeusen R, Duclos M, Foster C, et al. Prevention, Diagnosis, and Treatment of the Overtraining Syndrome: Joint Consensus Statement of the ECSS and ACSM. Med Sci Sports Exerc. 2013;45(1):186-205."
+    }
+  ],
+  "rules": [
+    {
+      "rule_id": "L1-RTT-0001",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "context_track_selection",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 2, p.11",
+        "note": "The source document does not define a single precise week-count threshold for 'long inactivity.' Table 2 distinguishes a 'break of 2+ weeks' (moderate track) from 'ER, exertional heat illness, or long inactivity' (most conservative track), but does not specify the exact boundary between the two in weeks. Four weeks is used here as a conservative working threshold and is flagged for review."
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "context_gate",
+        "check": "inactivity_duration_weeks >= long_inactivity_threshold_weeks AND plan_follows_long_inactivity_track == false",
+        "parameters": {
+          "long_inactivity_threshold_weeks": 4
+        }
+      },
+      "action": "reject",
+      "reason_template": {
+        "en": "The input indicates a return to training after a prolonged period of inactivity ({observed_value} weeks). CSCCa/NSCA guidelines require this population to follow the dedicated 'return from long inactivity' track: a 4-week 50/30/20/10% volume reduction combined with a gradual 5-week weight-training progression (Table 9), not a standard or moderately-reduced program. The plan does not indicate this track was applied.",
+        "pt": "A entrada indica um regresso ao treino após um longo período de inatividade ({observed_value} semanas). As diretrizes CSCCa/NSCA exigem que esta população siga a via dedicada de 'regresso após inatividade prolongada': uma redução de volume de 50/30/20/10% ao longo de 4 semanas combinada com uma progressão gradual de 5 semanas no treino de força (Tabela 9), e não um programa padrão ou moderadamente reduzido. O plano não indica que esta via foi aplicada.",
+        "ja": "入力情報から、長期間の休養明けであることが示されています({observed_value}週間)。CSCCa/NSCAガイドラインでは、この対象者には「長期休養からの復帰」専用トラック(4週間の50/30/20/10%負荷削減と、5週間かけた段階的な負荷復帰(Table 9)の組み合わせ)を適用すべきとされており、通常または中程度の削減のみのプログラムでは不十分です。提示されたプランには、このトラックが適用された形跡がありません。"
+      },
+      "severity": "high",
+      "verification_status": "pending_source_check",
+      "version": "1.0",
+      "last_reviewed": "2026-07-31"
+    },
+    {
+      "rule_id": "L1-RTT-0002a",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 9, Week 1 row",
+        "note": "Previously implemented as L1-RTT-0002 using a table structure (lookup_table). Restructured into independent single-fact rules on 2026-08-01, out of respect for EU sui generis database rights, so as not to reproduce the source table's structure. The underlying facts (numeric values) themselves are unchanged."
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "long_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "weeks_since_return == 1 AND sets_per_exercise > 2",
+        "parameters": {
+          "week": 1,
+          "max_sets": 2
+        }
+      },
+      "action": "reject",
+      "reason_template": {
+        "en": "Week 1 of return-to-training after long inactivity recommends no more than 2 set(s) per exercise (Table 9, Week 1 row). The plan's value ({observed_value}) exceeds this.",
+        "pt": "A semana 1 do regresso ao treino após inatividade prolongada recomenda no máximo 2 série(s) por exercício (Tabela 9, linha da Semana 1). O valor do plano ({observed_value}) excede este limite.",
+        "ja": "長期休養明けの復帰1週目は、1種目あたり最大2セットが推奨されています(Table9、Week1の行)。プランの設定値({observed_value})はこれを超えています。"
+      },
+      "severity": "high",
+      "verification_status": "pending_source_check",
+      "version": "2.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0002b",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 9, Week 1 row",
+        "note": "Previously implemented as L1-RTT-0002 using a table structure (lookup_table). Restructured into independent single-fact rules on 2026-08-01, out of respect for EU sui generis database rights, so as not to reproduce the source table's structure. The underlying facts (numeric values) themselves are unchanged."
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "long_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "weeks_since_return == 1 AND intensity_percent_1RM >= 75",
+        "parameters": {
+          "week": 1,
+          "max_intensity": 75
+        }
+      },
+      "action": "reject",
+      "reason_template": {
+        "en": "Week 1 of return-to-training after long inactivity recommends light loads, below 75% 1RM (Table 9, Week 1 row). The plan's value ({observed_value}%) meets or exceeds this.",
+        "pt": "A semana 1 do regresso ao treino após inatividade prolongada recomenda cargas leves, abaixo de 75% de 1RM (Tabela 9, linha da Semana 1). O valor do plano ({observed_value}%) atinge ou excede este limite.",
+        "ja": "長期休養明けの復帰1週目は、80%1RM未満(<75%)の軽負荷が推奨されています(Table9、Week1の行)。プランの設定値({observed_value}%)はこれ以上になっています。"
+      },
+      "severity": "high",
+      "verification_status": "pending_source_check",
+      "version": "2.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0002c",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 9, Week 1 row",
+        "note": "Previously implemented as L1-RTT-0002 using a table structure (lookup_table). Restructured into independent single-fact rules on 2026-08-01, out of respect for EU sui generis database rights, so as not to reproduce the source table's structure. The underlying facts (numeric values) themselves are unchanged."
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "long_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "weeks_since_return == 1 AND rest_minutes < 5",
+        "parameters": {
+          "week": 1,
+          "min_rest": 5
+        }
+      },
+      "action": "reject",
+      "reason_template": {
+        "en": "Week 1 of return-to-training after long inactivity recommends at least 5 minutes of rest between sets (Table 9, Week 1 row). The plan's value ({observed_value} min) falls below this minimum.",
+        "pt": "A semana 1 do regresso ao treino após inatividade prolongada recomenda pelo menos 5 minutos de descanso entre séries (Tabela 9, linha da Semana 1). O valor do plano ({observed_value} min) está abaixo deste mínimo.",
+        "ja": "長期休養明けの復帰1週目は、セット間の休息を最低5分取ることが推奨されています(Table9、Week1の行)。プランの設定値({observed_value}分)はこの最低ラインを下回っています。"
+      },
+      "severity": "medium",
+      "verification_status": "pending_source_check",
+      "version": "2.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0002d",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 9, Week 1 row",
+        "note": "Previously implemented as L1-RTT-0002 using a table structure (lookup_table). Restructured into independent single-fact rules on 2026-08-01, out of respect for EU sui generis database rights, so as not to reproduce the source table's structure. The underlying facts (numeric values) themselves are unchanged."
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "long_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "weeks_since_return == 1 AND frequency_days_per_week > 2",
+        "parameters": {
+          "week": 1,
+          "max_frequency": 2
+        }
+      },
+      "action": "reject",
+      "reason_template": {
+        "en": "Week 1 of return-to-training after long inactivity recommends no more than 2 session(s) per week (Table 9, Week 1 row). The plan's value ({observed_value}) exceeds this.",
+        "pt": "A semana 1 do regresso ao treino após inatividade prolongada recomenda no máximo 2 sessão(ões) por semana (Tabela 9, linha da Semana 1). O valor do plano ({observed_value}) excede este limite.",
+        "ja": "長期休養明けの復帰1週目は、週最大2回のセッションが推奨されています(Table9、Week1の行)。プランの設定値({observed_value})はこれを超えています。"
+      },
+      "severity": "high",
+      "verification_status": "pending_source_check",
+      "version": "2.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0002e",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 9, Week 2 row",
+        "note": "Previously implemented as L1-RTT-0002 using a table structure (lookup_table). Restructured into independent single-fact rules on 2026-08-01, out of respect for EU sui generis database rights, so as not to reproduce the source table's structure. The underlying facts (numeric values) themselves are unchanged."
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "long_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "weeks_since_return == 2 AND sets_per_exercise > 3",
+        "parameters": {
+          "week": 2,
+          "max_sets": 3
+        }
+      },
+      "action": "reject",
+      "reason_template": {
+        "en": "Week 2 of return-to-training after long inactivity recommends no more than 3 set(s) per exercise (Table 9, Week 2 row). The plan's value ({observed_value}) exceeds this.",
+        "pt": "A semana 2 do regresso ao treino após inatividade prolongada recomenda no máximo 3 série(s) por exercício (Tabela 9, linha da Semana 2). O valor do plano ({observed_value}) excede este limite.",
+        "ja": "長期休養明けの復帰2週目は、1種目あたり最大3セットが推奨されています(Table9、Week2の行)。プランの設定値({observed_value})はこれを超えています。"
+      },
+      "severity": "high",
+      "verification_status": "pending_source_check",
+      "version": "2.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0002f",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 9, Week 2 row",
+        "note": "Previously implemented as L1-RTT-0002 using a table structure (lookup_table). Restructured into independent single-fact rules on 2026-08-01, out of respect for EU sui generis database rights, so as not to reproduce the source table's structure. The underlying facts (numeric values) themselves are unchanged."
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "long_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "weeks_since_return == 2 AND intensity_percent_1RM >= 75",
+        "parameters": {
+          "week": 2,
+          "max_intensity": 75
+        }
+      },
+      "action": "reject",
+      "reason_template": {
+        "en": "Week 2 of return-to-training after long inactivity recommends light loads, below 75% 1RM (Table 9, Week 2 row). The plan's value ({observed_value}%) meets or exceeds this.",
+        "pt": "A semana 2 do regresso ao treino após inatividade prolongada recomenda cargas leves, abaixo de 75% de 1RM (Tabela 9, linha da Semana 2). O valor do plano ({observed_value}%) atinge ou excede este limite.",
+        "ja": "長期休養明けの復帰2週目は、80%1RM未満(<75%)の軽負荷が推奨されています(Table9、Week2の行)。プランの設定値({observed_value}%)はこれ以上になっています。"
+      },
+      "severity": "high",
+      "verification_status": "pending_source_check",
+      "version": "2.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0002g",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 9, Week 2 row",
+        "note": "Previously implemented as L1-RTT-0002 using a table structure (lookup_table). Restructured into independent single-fact rules on 2026-08-01, out of respect for EU sui generis database rights, so as not to reproduce the source table's structure. The underlying facts (numeric values) themselves are unchanged."
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "long_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "weeks_since_return == 2 AND rest_minutes < 3",
+        "parameters": {
+          "week": 2,
+          "min_rest": 3
+        }
+      },
+      "action": "reject",
+      "reason_template": {
+        "en": "Week 2 of return-to-training after long inactivity recommends at least 3 minutes of rest between sets (Table 9, Week 2 row). The plan's value ({observed_value} min) falls below this minimum.",
+        "pt": "A semana 2 do regresso ao treino após inatividade prolongada recomenda pelo menos 3 minutos de descanso entre séries (Tabela 9, linha da Semana 2). O valor do plano ({observed_value} min) está abaixo deste mínimo.",
+        "ja": "長期休養明けの復帰2週目は、セット間の休息を最低3分取ることが推奨されています(Table9、Week2の行)。プランの設定値({observed_value}分)はこの最低ラインを下回っています。"
+      },
+      "severity": "medium",
+      "verification_status": "pending_source_check",
+      "version": "2.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0002h",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 9, Week 2 row",
+        "note": "Previously implemented as L1-RTT-0002 using a table structure (lookup_table). Restructured into independent single-fact rules on 2026-08-01, out of respect for EU sui generis database rights, so as not to reproduce the source table's structure. The underlying facts (numeric values) themselves are unchanged."
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "long_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "weeks_since_return == 2 AND frequency_days_per_week > 2",
+        "parameters": {
+          "week": 2,
+          "max_frequency": 2
+        }
+      },
+      "action": "reject",
+      "reason_template": {
+        "en": "Week 2 of return-to-training after long inactivity recommends no more than 2 session(s) per week (Table 9, Week 2 row). The plan's value ({observed_value}) exceeds this.",
+        "pt": "A semana 2 do regresso ao treino após inatividade prolongada recomenda no máximo 2 sessão(ões) por semana (Tabela 9, linha da Semana 2). O valor do plano ({observed_value}) excede este limite.",
+        "ja": "長期休養明けの復帰2週目は、週最大2回のセッションが推奨されています(Table9、Week2の行)。プランの設定値({observed_value})はこれを超えています。"
+      },
+      "severity": "high",
+      "verification_status": "pending_source_check",
+      "version": "2.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0003",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 8 (FIT rule), Table 9 note 'week 6: FIT rule applied'"
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "long_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "boolean_check",
+        "check": "population_is_long_inactivity == true AND weeks_since_return <= 5 AND plan_uses_FIT_rule_IRV_as_primary_constraint == true"
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "en": "For the long-inactivity population, the FIT rule (IRV 11-30 units) is intended to apply from week 6 onward, after completing the 5-week gradual progression in Table 9. Using the FIT rule as the primary constraint during weeks 1-5 skips the more conservative Table 9 progression this population requires.",
+        "pt": "Para a população com inatividade prolongada, a regra FIT (unidades IRV 11-30) destina-se a ser aplicada a partir da semana 6, após a conclusão da progressão gradual de 5 semanas da Tabela 9. Usar a regra FIT como restrição principal durante as semanas 1-5 salta a progressão mais conservadora da Tabela 9 que esta população requer.",
+        "ja": "長期休養明けの対象者に対しては、FIT rule(IRV 11-30units)はTable 9の5週間かけた段階的復帰を終えた6週目以降に適用されることを想定しています。1-5週目にFIT ruleを主な制約として使うと、この対象者に必要なTable 9のより保守的な段階的復帰をスキップしてしまいます。"
+      },
+      "severity": "medium",
+      "verification_status": "pending_source_check",
+      "version": "1.0",
+      "last_reviewed": "2026-07-31"
+    },
+    {
+      "rule_id": "L1-RTT-0004",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 8 (FIT rule)"
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "work_rest_ratio_denominator < min_denominator_for_week",
+        "parameters": {
+          "week_1_min_denominator": 4,
+          "week_2_min_denominator": 3
+        }
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "en": "In the first two weeks of return to training, a work-to-rest ratio of at least 1:4 (week 1) or 1:3 (week 2) is recommended to reduce the risk of exertional rhabdomyolysis. The plan's rest intervals ({observed_value}) fall below this minimum.",
+        "pt": "Nas primeiras duas semanas de regresso ao treino, recomenda-se uma relação trabalho-descanso de pelo menos 1:4 (semana 1) ou 1:3 (semana 2) para reduzir o risco de rabdomiólise de esforço. Os intervalos de descanso do plano ({observed_value}) estão abaixo deste mínimo.",
+        "ja": "復帰最初の2週間は、労作性横紋筋融解症のリスクを減らすため、最低でも1週目は1:4、2週目は1:3以上の運動:休息比が推奨されています。プランの休息時間設定({observed_value})はこの最低基準を下回っています。"
+      },
+      "severity": "medium",
+      "verification_status": "pending_source_check",
+      "version": "1.0",
+      "last_reviewed": "2026-07-31"
+    },
+    {
+      "rule_id": "L1-RTT-0005",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "risk_factor_amplification",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Exertional Rhabdomyolysis / Guidelines for prevention"
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "long_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "boolean_check",
+        "check": "population_is_long_inactivity == true AND (program_mandates_training_to_failure == true OR eccentric_emphasis_flagged == true OR novel_high_volume_circuit == true) AND weeks_since_return <= 2"
+      },
+      "action": "reject",
+      "reason_template": {
+        "en": "Documented cases of exertional rhabdomyolysis in athletes consistently involve a combination of: return from a period of inactivity, a novel or unaccustomed workout, high-volume submaximal or to-failure training, and/or eccentric-emphasis exercises performed in the first 1-2 weeks back. The plan combines return-from-inactivity with one or more of these risk factors within the first 2 weeks.",
+        "pt": "Casos documentados de rabdomiólise de esforço em atletas envolvem consistentemente uma combinação de: regresso após um período de inatividade, um treino novo ou pouco habitual, treino submáximo de alto volume ou até à falha, e/ou exercícios com ênfase excêntrica realizados nas primeiras 1-2 semanas de regresso. O plano combina o regresso após inatividade com um ou mais destes fatores de risco nas primeiras 2 semanas.",
+        "ja": "労作性横紋筋融解症の実例は、一貫して「休養明け」「馴染みのない新しい種目」「高ボリュームのサブマキシマル〜failureまでのトレーニング」「エキセントリック局面を強調した種目」のいずれかが、復帰最初の1-2週間に組み合わさって起きています。このプランは休養明けという条件に、これらのリスク要因のいずれかを最初の2週間以内に組み合わせています。"
+      },
+      "severity": "high",
+      "verification_status": "pending_source_check",
+      "version": "1.0",
+      "last_reviewed": "2026-07-31"
+    },
+    {
+      "rule_id": "L1-RTT-0006",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "completeness_check",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Importance of Preparticipation Medical Evaluations"
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "long_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "boolean_check",
+        "check": "population_is_long_inactivity == true AND plan_output_lacks_medical_clearance_recommendation == true"
+      },
+      "action": "flag_missing_recommendation",
+      "reason_template": {
+        "en": "Guidelines emphasize preparticipation medical evaluation as a foundational safety step before resuming training after a prolonged break. The plan does not recommend checking in with a physician before starting.",
+        "pt": "As diretrizes destacam a avaliação médica pré-participação como um passo de segurança fundamental antes de retomar o treino após uma pausa prolongada. O plano não recomenda consultar um médico antes de começar.",
+        "ja": "ガイドラインでは、長期休養明けにトレーニングを再開する前の基礎的な安全確認として、事前の医学的評価(かかりつけ医への相談等)を重視しています。このプランには、開始前に医師に相談することの推奨が含まれていません。"
+      },
+      "severity": "low",
+      "verification_status": "pending_source_check",
+      "version": "1.0",
+      "last_reviewed": "2026-07-31"
+    },
+    {
+      "rule_id": "L1-ECSS-0001",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "monitoring_escalation",
+      "source": {
+        "document": "ECSS-ACSM-2013",
+        "section": "Definition / Diagnosis"
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "boolean_check",
+        "check": "user_reports_persistent_unexplained_fatigue_or_performance_decline_weeks >= 4 AND plan_recommends_continuing_programmed_progression_without_reevaluation == true"
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "en": "Persistent, unexplained fatigue or performance decline lasting several weeks despite adequate recovery may indicate non-functional overreaching or overtraining syndrome, which cannot be diagnosed from a single exchange and requires professional evaluation. The plan continues programmed progression without recommending a check-in or reassessment.",
+        "pt": "Fadiga persistente e inexplicada ou declínio de desempenho durante várias semanas, apesar de recuperação adequada, pode indicar overreaching não funcional ou síndrome de sobretreino, que não pode ser diagnosticada numa única troca e requer avaliação profissional. O plano continua a progressão programada sem recomendar uma reavaliação.",
+        "ja": "十分な回復期間を取っているにもかかわらず数週間続く原因不明の疲労やパフォーマンス低下は、非機能的オーバーリーチングやオーバートレーニング症候群を示唆する可能性があり、一度のやり取りだけでは診断できず専門家による評価が必要です。このプランは、見直しや専門家への相談を勧めずに、計画通りの負荷漸増を継続する内容になっています。"
+      },
+      "severity": "medium",
+      "verification_status": "pending_source_check",
+      "version": "1.0",
+      "last_reviewed": "2026-07-31"
+    }
+  ],
+  "ruleset_notes": {
+    "restructuring_2026-08-01": "L1-RTT-0002 (table_lookup format) was decomposed into 8 independent numeric rules (L1-RTT-0002a-h) so the source table's structure is not reproduced as-is. Scope is limited to Table 9, Weeks 1-2 (sets/intensity/rest/frequency). Weeks 3-5 and the reps field are out of scope for now (the direction/significance of exceeding the reps range is not clearly established from the source, so it was deferred rather than encoded as a strict rule). The rest_minutes check direction was corrected from 'exceeds a maximum' to the correct 'falls below a minimum.'"
+  }
+}
