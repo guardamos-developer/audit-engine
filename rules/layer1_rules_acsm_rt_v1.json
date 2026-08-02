@@ -33,14 +33,19 @@
       },
       "action": "route_to_layer2_or_reject",
       "reason_template": {
-        "en": "This ruleset is based on evidence for healthy adults aged 18 and over with no diagnosed disease. If the target population falls outside this scope (injury, post-surgical, pregnancy, minors, etc.), these rules do not apply and the case should be routed to expert judgment (Layer 2) or excluded.",
-        "pt": "Este conjunto de regras baseia-se em evidências para adultos saudáveis com 18 anos ou mais, sem doença diagnosticada. Se a população-alvo estiver fora deste âmbito (lesão, pós-cirúrgico, gravidez, menores, etc.), estas regras não se aplicam e o caso deve ser encaminhado para avaliação especializada (Layer 2) ou excluído.",
-        "ja": "本ルールセットは「18歳以上、既往疾患のない健康な成人」を対象としたエビデンスに基づいています。対象者がこの範囲外(怪我・術後・妊娠中・未成年等)の場合、このルールセットの適用外であり、専門家の判断(Layer2)または対象外として扱う必要があります。"
+        "flagged": {
+          "en": "This ruleset is based on evidence for healthy adults aged 18 and over with no diagnosed disease. If the target population falls outside this scope (injury, post-surgical, pregnancy, minors, etc.), these rules do not apply and the case should be routed to expert judgment (Layer 2) or excluded.",
+          "pt": "Este conjunto de regras baseia-se em evidências para adultos saudáveis com 18 anos ou mais, sem doença diagnosticada. Se a população-alvo estiver fora deste âmbito (lesão, pós-cirúrgico, gravidez, menores, etc.), estas regras não se aplicam e o caso deve ser encaminhado para avaliação especializada (Layer 2) ou excluído.",
+          "ja": "本ルールセットは「18歳以上、既往疾患のない健康な成人」を対象としたエビデンスに基づいています。対象者がこの範囲外(怪我・術後・妊娠中・未成年等)の場合、このルールセットの適用外であり、専門家の判断(Layer2)または対象外として扱う必要があります。"
+        },
+        "pass": {
+          "en": "The target population (healthy adult, 18+, no diagnosed disease, injury, or pregnancy) falls within the population this ruleset is designed for."
+        }
       },
       "severity": "high",
       "version": "1.0",
-      "last_reviewed": "2026-07-30",
-      "verification_status": "pending_source_check"
+      "last_reviewed": "2026-08-01",
+      "verification_status": "verified"
     },
     {
       "rule_id": "L1-RT-0002",
@@ -73,14 +78,19 @@
       },
       "action": "flag_suboptimal",
       "reason_template": {
-        "en": "A training frequency of {observed_value} session(s) per week falls below the evidence-based recommendation of at least {min_sessions_per_week} sessions/week for strength and hypertrophy gains. This is not unsafe, but it deviates from the evidence-based recommendation.",
-        "pt": "Uma frequência de treino de {observed_value} sessão(ões) por semana está abaixo da recomendação baseada em evidências de pelo menos {min_sessions_per_week} sessões/semana para ganhos de força e hipertrofia. Isto não é perigoso, mas desvia-se da recomendação baseada em evidências.",
-        "ja": "週{observed_value}回のトレーニング頻度は、筋力・筋肥大の向上に推奨される週2回以上を下回っています。危険ではありませんが、エビデンスに基づく推奨から外れています。"
+        "flagged": {
+          "en": "A training frequency of {observed_value} session(s) per week falls below the evidence-based recommendation of at least {min_sessions_per_week} sessions/week for strength and hypertrophy gains. This is not unsafe, but it deviates from the evidence-based recommendation.",
+          "pt": "Uma frequência de treino de {observed_value} sessão(ões) por semana está abaixo da recomendação baseada em evidências de pelo menos {min_sessions_per_week} sessões/semana para ganhos de força e hipertrofia. Isto não é perigoso, mas desvia-se da recomendação baseada em evidências.",
+          "ja": "週{observed_value}回のトレーニング頻度は、筋力・筋肥大の向上に推奨される週2回以上を下回っています。危険ではありませんが、エビデンスに基づく推奨から外れています。"
+        },
+        "pass": {
+          "en": "Training frequency ({observed_value} sessions/week) meets the evidence-based minimum of at least 2 sessions/week for strength and hypertrophy gains."
+        }
       },
       "severity": "low",
       "version": "1.0",
-      "last_reviewed": "2026-07-30",
-      "verification_status": "pending_source_check"
+      "last_reviewed": "2026-08-01",
+      "verification_status": "verified"
     },
     {
       "rule_id": "L1-RT-0003",
@@ -113,14 +123,19 @@
       },
       "action": "flag_suboptimal",
       "reason_template": {
-        "en": "One set per exercise is more effective than zero sets, but two or more sets have been shown to be superior to one set (currently {observed_value} set(s)/exercise). At least 2 sets per exercise is recommended.",
-        "pt": "Uma série por exercício é mais eficaz do que nenhuma série, mas duas ou mais séries demonstraram ser superiores a uma série (atualmente {observed_value} série(s)/exercício). Recomenda-se um mínimo de 2 séries por exercício.",
-        "ja": "1セット/種目は0セットより有効ですが、2セット以上が1セットより優れているとされています({observed_value}セット/種目)。最低でも2セット/種目を推奨します。"
+        "flagged": {
+          "en": "One set per exercise is more effective than zero sets, but two or more sets have been shown to be superior to one set (currently {observed_value} set(s)/exercise). At least 2 sets per exercise is recommended.",
+          "pt": "Uma série por exercício é mais eficaz do que nenhuma série, mas duas ou mais séries demonstraram ser superiores a uma série (atualmente {observed_value} série(s)/exercício). Recomenda-se um mínimo de 2 séries por exercício.",
+          "ja": "1セット/種目は0セットより有効ですが、2セット以上が1セットより優れているとされています({observed_value}セット/種目)。最低でも2セット/種目を推奨します。"
+        },
+        "pass": {
+          "en": "Set volume ({observed_value} set(s)/exercise) meets the recommended minimum of at least 2 sets per exercise."
+        }
       },
       "severity": "low",
       "version": "1.0",
-      "last_reviewed": "2026-07-30",
-      "verification_status": "pending_source_check"
+      "last_reviewed": "2026-08-01",
+      "verification_status": "verified"
     },
     {
       "rule_id": "L1-RT-0004",
@@ -155,14 +170,19 @@
       },
       "action": "flag_suboptimal",
       "reason_template": {
-        "en": "For strength goals, loads of ≥80% 1RM show a dose-response benefit. The current setting ({observed_value}% 1RM) falls below this and may not be optimal for the stated goal. Note, however, that true beginners should start at lower loads to prioritize learning proper form.",
-        "pt": "Para objetivos de força, cargas ≥80% de 1RM demonstram um benefício dose-resposta. A configuração atual ({observed_value}% de 1RM) está abaixo deste valor e pode não ser ideal para o objetivo indicado. No entanto, note que verdadeiros principiantes devem começar com cargas mais baixas, priorizando a aprendizagem da técnica correta.",
-        "ja": "筋力向上を目的とする場合、80%1RM以上の負荷が用量反応的に有効とされています。現在の設定({observed_value}%1RM)はこれを下回っており、目的に対して最適ではない可能性があります。ただしトレーニング開始直後の初心者には、フォーム習得を優先し低負荷から始めることが望ましい点に注意してください。"
+        "flagged": {
+          "en": "For strength goals, loads of ≥80% 1RM show a dose-response benefit. The current setting ({observed_value}% 1RM) falls below this and may not be optimal for the stated goal. Note, however, that true beginners should start at lower loads to prioritize learning proper form.",
+          "pt": "Para objetivos de força, cargas ≥80% de 1RM demonstram um benefício dose-resposta. A configuração atual ({observed_value}% de 1RM) está abaixo deste valor e pode não ser ideal para o objetivo indicado. No entanto, note que verdadeiros principiantes devem começar com cargas mais baixas, priorizando a aprendizagem da técnica correta.",
+          "ja": "筋力向上を目的とする場合、80%1RM以上の負荷が用量反応的に有効とされています。現在の設定({observed_value}%1RM)はこれを下回っており、目的に対して最適ではない可能性があります。ただしトレーニング開始直後の初心者には、フォーム習得を優先し低負荷から始めることが望ましい点に注意してください。"
+        },
+        "pass": {
+          "en": "For a strength goal, the prescribed load ({observed_value}% 1RM) meets or exceeds the evidence-based threshold of 80% 1RM associated with dose-response strength gains."
+        }
       },
       "severity": "low",
       "version": "1.0",
-      "last_reviewed": "2026-07-30",
-      "verification_status": "pending_source_check"
+      "last_reviewed": "2026-08-01",
+      "verification_status": "verified"
     },
     {
       "rule_id": "L1-RT-0005",
@@ -196,14 +216,19 @@
       },
       "action": "flag_suboptimal",
       "reason_template": {
-        "en": "For hypertrophy goals, ≥10 sets/muscle group/week shows a dose-response benefit. The current setting ({observed_value} sets/week) falls below this.",
-        "pt": "Para objetivos de hipertrofia, ≥10 séries/grupo muscular/semana demonstram um benefício dose-resposta. A configuração atual ({observed_value} séries/semana) está abaixo deste valor.",
-        "ja": "筋肥大を目的とする場合、週10セット/筋群以上が用量反応的に有効とされています。現在の設定(週{observed_value}セット)はこれを下回っています。"
+        "flagged": {
+          "en": "For hypertrophy goals, ≥10 sets/muscle group/week shows a dose-response benefit. The current setting ({observed_value} sets/week) falls below this.",
+          "pt": "Para objetivos de hipertrofia, ≥10 séries/grupo muscular/semana demonstram um benefício dose-resposta. A configuração atual ({observed_value} séries/semana) está abaixo deste valor.",
+          "ja": "筋肥大を目的とする場合、週10セット/筋群以上が用量反応的に有効とされています。現在の設定(週{observed_value}セット)はこれを下回っています。"
+        },
+        "pass": {
+          "en": "For a hypertrophy goal, weekly volume ({observed_value} sets/muscle group) meets or exceeds the evidence-based threshold of 10 sets/week/muscle group associated with dose-response hypertrophy gains."
+        }
       },
       "severity": "low",
       "version": "1.0",
-      "last_reviewed": "2026-07-30",
-      "verification_status": "pending_source_check"
+      "last_reviewed": "2026-08-01",
+      "verification_status": "verified"
     },
     {
       "rule_id": "L1-RT-0006",
@@ -238,14 +263,19 @@
       },
       "action": "flag_suboptimal",
       "reason_template": {
-        "en": "For power goals, moderate loads of approximately 30-70% 1RM are shown to be effective. The current setting ({observed_value}% 1RM) falls outside this range.",
-        "pt": "Para objetivos de potência, cargas moderadas de aproximadamente 30-70% de 1RM demonstram ser eficazes. A configuração atual ({observed_value}% de 1RM) está fora deste intervalo.",
-        "ja": "パワー向上を目的とする場合、30〜70%1RM程度の中負荷が有効とされています。現在の設定({observed_value}%1RM)はこの範囲外です。"
+        "flagged": {
+          "en": "For power goals, moderate loads of approximately 30-70% 1RM are shown to be effective. The current setting ({observed_value}% 1RM) falls outside this range.",
+          "pt": "Para objetivos de potência, cargas moderadas de aproximadamente 30-70% de 1RM demonstram ser eficazes. A configuração atual ({observed_value}% de 1RM) está fora deste intervalo.",
+          "ja": "パワー向上を目的とする場合、30〜70%1RM程度の中負荷が有効とされています。現在の設定({observed_value}%1RM)はこの範囲外です。"
+        },
+        "pass": {
+          "en": "For a power goal, the prescribed load ({observed_value}% 1RM) falls within the evidence-based range of 30-70% 1RM associated with effective power development."
+        }
       },
       "severity": "low",
       "version": "1.0",
-      "last_reviewed": "2026-07-30",
-      "verification_status": "pending_source_check"
+      "last_reviewed": "2026-08-01",
+      "verification_status": "verified"
     },
     {
       "rule_id": "L1-RT-0007",
@@ -275,14 +305,19 @@
       },
       "action": "flag_caution",
       "reason_template": {
-        "en": "Training every set to momentary muscular failure is not required to improve strength, hypertrophy, or power. In populations prone to form breakdown or in older adults, it may increase cardiovascular strain and injury risk from poor form, so it should not be imposed as a mandatory requirement.",
-        "pt": "Treinar todas as séries até à falha muscular momentânea não é necessário para melhorar a força, a hipertrofia ou a potência. Em populações propensas à perda de técnica ou em adultos mais velhos, pode aumentar a sobrecarga cardiovascular e o risco de lesão devido à má execução, pelo que não deve ser imposto como requisito obrigatório.",
-        "ja": "毎セットを完全な筋力低下(failure)まで追い込むことは、筋力・筋肥大・パワーの向上に必須ではないとされています。特にフォームが崩れやすい状況や高齢者では、血管系への負荷やフォーム崩れによる怪我リスクが増す可能性があるため、必須要件として課すべきではありません。"
+        "flagged": {
+          "en": "Training every set to momentary muscular failure is not required to improve strength, hypertrophy, or power. In populations prone to form breakdown or in older adults, it may increase cardiovascular strain and injury risk from poor form, so it should not be imposed as a mandatory requirement.",
+          "pt": "Treinar todas as séries até à falha muscular momentânea não é necessário para melhorar a força, a hipertrofia ou a potência. Em populações propensas à perda de técnica ou em adultos mais velhos, pode aumentar a sobrecarga cardiovascular e o risco de lesão devido à má execução, pelo que não deve ser imposto como requisito obrigatório.",
+          "ja": "毎セットを完全な筋力低下(failure)まで追い込むことは、筋力・筋肥大・パワーの向上に必須ではないとされています。特にフォームが崩れやすい状況や高齢者では、血管系への負荷やフォーム崩れによる怪我リスクが増す可能性があるため、必須要件として課すべきではありません。"
+        },
+        "pass": {
+          "en": "The plan does not mandate training every set to momentary muscular failure, consistent with evidence that this is not required for strength, hypertrophy, or power gains."
+        }
       },
       "severity": "medium",
       "version": "1.0",
-      "last_reviewed": "2026-07-30",
-      "verification_status": "pending_source_check"
+      "last_reviewed": "2026-08-01",
+      "verification_status": "verified"
     },
     {
       "rule_id": "L1-RT-0008",
@@ -312,14 +347,19 @@
       },
       "action": "flag_inaccurate_overcaution",
       "reason_template": {
-        "en": "An analysis of over 38,000 participants showed that resistance training does not increase the risk of serious adverse events in healthy adults. The risk of non-serious adverse events (pain, fatigue, bursitis, edema) is comparable to aerobic exercise. Absent a specific identified contraindication, unfounded claims of excessive danger are inaccurate.",
-        "pt": "Uma análise de mais de 38.000 participantes mostrou que o treino de resistência não aumenta o risco de eventos adversos graves em adultos saudáveis. O risco de eventos adversos não graves (dor, fadiga, bursite, edema) é comparável ao do exercício aeróbico. Na ausência de uma contraindicação específica identificada, afirmações infundadas de perigo excessivo são incorretas.",
-        "ja": "38,000人超を対象とした分析では、レジスタンストレーニングは健康な成人において重篤な有害事象のリスクを増加させないことが示されています。非重篤な有害事象(痛み、疲労、滑液包炎、浮腫)のリスクも有酸素運動と同程度です。具体的な禁忌事項が特定されていない場合、根拠のない過度な危険性の主張は不正確です。"
+        "flagged": {
+          "en": "An analysis of over 38,000 participants showed that resistance training does not increase the risk of serious adverse events in healthy adults. The risk of non-serious adverse events (pain, fatigue, bursitis, edema) is comparable to aerobic exercise. Absent a specific identified contraindication, unfounded claims of excessive danger are inaccurate.",
+          "pt": "Uma análise de mais de 38.000 participantes mostrou que o treino de resistência não aumenta o risco de eventos adversos graves em adultos saudáveis. O risco de eventos adversos não graves (dor, fadiga, bursite, edema) é comparável ao do exercício aeróbico. Na ausência de uma contraindicação específica identificada, afirmações infundadas de perigo excessivo são incorretas.",
+          "ja": "38,000人超を対象とした分析では、レジスタンストレーニングは健康な成人において重篤な有害事象のリスクを増加させないことが示されています。非重篤な有害事象(痛み、疲労、滑液包炎、浮腫)のリスクも有酸素運動と同程度です。具体的な禁忌事項が特定されていない場合、根拠のない過度な危険性の主張は不正確です。"
+        },
+        "pass": {
+          "en": "The plan does not make unfounded claims that resistance training is unsafe for this healthy population absent a specific identified contraindication."
+        }
       },
       "severity": "medium",
       "version": "1.0",
-      "last_reviewed": "2026-07-30",
-      "verification_status": "pending_source_check"
+      "last_reviewed": "2026-08-01",
+      "verification_status": "verified"
     },
     {
       "rule_id": "L1-RT-0009",
@@ -349,14 +389,19 @@
       },
       "action": "flag_suboptimal",
       "reason_template": {
-        "en": "With appropriate progressive overload, periodization is not shown to be significantly superior to non-periodized programs. For general muscle function and hypertrophy goals, a complex periodization structure should not be treated as a mandatory requirement.",
-        "pt": "Com uma sobrecarga progressiva adequada, a periodização não demonstra ser significativamente superior a programas não periodizados. Para objetivos gerais de função muscular e hipertrofia, uma estrutura de periodização complexa não deve ser tratada como requisito obrigatório.",
-        "ja": "適切な漸進的過負荷が伴っていれば、ピリオダイゼーション(期分け)は非periodizedプログラムに対して有意に優れているわけではないとされています。一般的な筋機能・筋肥大の目標において、複雑な期分け構造を必須要件とする必要はありません。"
+        "flagged": {
+          "en": "With appropriate progressive overload, periodization is not shown to be significantly superior to non-periodized programs. For general muscle function and hypertrophy goals, a complex periodization structure should not be treated as a mandatory requirement.",
+          "pt": "Com uma sobrecarga progressiva adequada, a periodização não demonstra ser significativamente superior a programas não periodizados. Para objetivos gerais de função muscular e hipertrofia, uma estrutura de periodização complexa não deve ser tratada como requisito obrigatório.",
+          "ja": "適切な漸進的過負荷が伴っていれば、ピリオダイゼーション(期分け)は非periodizedプログラムに対して有意に優れているわけではないとされています。一般的な筋機能・筋肥大の目標において、複雑な期分け構造を必須要件とする必要はありません。"
+        },
+        "pass": {
+          "en": "The plan does not impose a complex periodization structure as a strict requirement, consistent with evidence that periodization is not necessary for general muscle function and hypertrophy goals given appropriate progressive overload."
+        }
       },
       "severity": "low",
       "version": "1.0",
-      "last_reviewed": "2026-07-30",
-      "verification_status": "pending_source_check"
+      "last_reviewed": "2026-08-01",
+      "verification_status": "verified"
     },
     {
       "rule_id": "L1-RT-0010",
@@ -386,14 +431,19 @@
       },
       "action": "flag_suboptimal",
       "reason_template": {
-        "en": "Performing no resistance training at all is inferior to performing some form of resistance training across strength, hypertrophy, power, endurance, and multiple physical function outcomes. If there is a muscle function goal, engaging in some form of resistance training is recommended.",
-        "pt": "Não realizar qualquer treino de resistência é inferior a realizar alguma forma de treino de resistência, em termos de força, hipertrofia, potência, resistência e múltiplos indicadores de função física. Se existir um objetivo de função muscular, recomenda-se a realização de alguma forma de treino de resistência.",
-        "ja": "レジスタンストレーニングを全く行わないことは、筋力・筋肥大・パワー・持久力・複数の身体機能指標において、何らかの形でも行うことに比べて劣るとされています。筋機能に関する目標がある場合、何らかの形のレジスタンストレーニングの実施が推奨されます。"
+        "flagged": {
+          "en": "Performing no resistance training at all is inferior to performing some form of resistance training across strength, hypertrophy, power, endurance, and multiple physical function outcomes. If there is a muscle function goal, engaging in some form of resistance training is recommended.",
+          "pt": "Não realizar qualquer treino de resistência é inferior a realizar alguma forma de treino de resistência, em termos de força, hipertrofia, potência, resistência e múltiplos indicadores de função física. Se existir um objetivo de função muscular, recomenda-se a realização de alguma forma de treino de resistência.",
+          "ja": "レジスタンストレーニングを全く行わないことは、筋力・筋肥大・パワー・持久力・複数の身体機能指標において、何らかの形でも行うことに比べて劣るとされています。筋機能に関する目標がある場合、何らかの形のレジスタンストレーニングの実施が推奨されます。"
+        },
+        "pass": {
+          "en": "The plan recommends engaging in some form of resistance training, consistent with evidence that any resistance training outperforms none for strength, hypertrophy, power, and multiple physical function outcomes."
+        }
       },
       "severity": "low",
       "version": "1.0",
-      "last_reviewed": "2026-07-30",
-      "verification_status": "pending_source_check"
+      "last_reviewed": "2026-08-01",
+      "verification_status": "verified"
     }
   ],
   "ruleset_notes": {

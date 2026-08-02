@@ -370,6 +370,25 @@ def _match_result(rule: dict, matched_parameters: dict) -> dict:
     }
 
 
+def _applicable_result(
+    rule: dict,
+    *,
+    violated: bool,
+    pass_parameters: dict | None = None,
+    skip_pass_fact: bool = False,
+) -> dict:
+    return {
+        "rule_id": rule["rule_id"],
+        "action": rule["action"],
+        "severity": rule["severity"],
+        "violated": violated,
+        "pass_parameters": pass_parameters or {},
+        "skip_pass_fact": skip_pass_fact,
+        "reason_template": rule.get("reason_template", {}),
+        "condition": rule.get("condition") or {},
+    }
+
+
 def _is_population_gate(rule: dict) -> bool:
     return rule.get("rule_type") == "applicability_gate" or (
         (rule.get("condition") or {}).get("type") == "population_check"
@@ -380,20 +399,120 @@ def _is_context_gate(rule: dict) -> bool:
     return (rule.get("condition") or {}).get("type") == "context_gate"
 
 
-def evaluate_layer1(
+_WEEK_EQ_RE = re.compile(
+    r"weeks_since_return\s*==\s*(?P<week>-?\d+(?:\.\d+)?|\w+)", re.IGNORECASE
+)
+
+
+def _required_week(condition: dict, params: dict) -> int | None:
+    """Return N if check includes ``weeks_since_return == N``, else None."""
+    check = condition.get("check") or ""
+    match = _WEEK_EQ_RE.search(check)
+    if not match:
+        return None
+    token = match.group("week")
+    try:
+        return int(_resolve_rhs(token, params))
+    except ValueError:
+        return None
+
+
+def _context_gate_in_scope(condition: dict, plan: dict) -> bool:
+    """True when the plan is in the long-inactivity situation this gate covers."""
+    params = condition.get("parameters") or {}
+    threshold = params.get("long_inactivity_threshold_weeks", 4)
+    weeks = plan.get("inactivity_duration_weeks")
+    return weeks is not None and weeks >= threshold
+
+
+def _primary_metric_field(condition: dict) -> str | None:
+    """Field used for {observed_value} in pass templates (non-week clause)."""
+    check = condition.get("check") or ""
+    cond_type = condition.get("type")
+    if cond_type == "numeric_threshold":
+        clauses = [c.strip() for c in re.split(r"\s+AND\s+", check.strip()) if c.strip()]
+        for clause in reversed(clauses):
+            m = _NUMERIC_CLAUSE_RE.match(clause)
+            if m and m.group("field") != "weeks_since_return":
+                return m.group("field")
+        return None
+    if cond_type == "range_check":
+        m = _RANGE_CHECK_RE.match(check.strip())
+        return m.group("field") if m else None
+    return None
+
+
+def _build_pass_parameters(rule: dict, plan: dict) -> dict | None:
+    """Collect values needed to render reason_template['pass'].
+
+    Returns None when a required observed metric is missing — Layer1-B must not
+    invent a pass claim for unevaluated fields.
+    """
+    condition = rule.get("condition") or {}
+    params = dict(condition.get("parameters") or {})
+    out = {**params}
+    cond_type = condition.get("type")
+
+    if cond_type == "context_gate":
+        weeks = plan.get("inactivity_duration_weeks")
+        out["observed_value"] = weeks
+        out["plan_follows_long_inactivity_track"] = plan.get(
+            "plan_follows_long_inactivity_track"
+        )
+        return out
+
+    if cond_type == "population_check":
+        out["target_population"] = plan.get("target_population")
+        return out
+
+    field = _primary_metric_field(condition)
+    if field:
+        observed = _resolve_plan_value(plan, field)
+        if observed is None:
+            return None
+        out["field"] = field
+        out["observed_value"] = observed
+    return out
+
+
+def _rule_in_evaluation_scope(rule: dict, plan: dict) -> bool:
+    """Whether this active rule's applicability / week gate covers the plan."""
+    condition = rule.get("condition") or {}
+    cond_type = condition.get("type")
+
+    if _is_population_gate(rule):
+        return True
+
+    if cond_type == "context_gate":
+        return _context_gate_in_scope(condition, plan)
+
+    if not _rule_applies(rule, plan):
+        return False
+
+    required = _required_week(condition, condition.get("parameters") or {})
+    if required is not None:
+        week_n = plan.get("weeks_since_return")
+        if week_n is None:
+            return False
+        try:
+            return int(week_n) == int(required)
+        except (TypeError, ValueError):
+            return False
+    return True
+
+
+def evaluate_layer1_detailed(
     plan: dict,
     rules_path: str | Path | None = None,
     ruleset: dict | None = None,
-) -> list[dict]:
-    """Evaluate Layer1 rules against a structured training plan.
+) -> dict[str, list[dict]]:
+    """Evaluate Layer1 and return both violations and in-scope rules.
 
-    Order:
-      1. Population applicability gate (L1-RT-0001) — short-circuit if matched
-      2. Context gates (L1-RTT-0001) — evaluated early; matches are collected
-         (does not skip remaining rules, so week-specific RTT rules can also fire)
-      3. Remaining active rules
-
-    Inactive rule_ids (not in ACTIVE_RULE_IDS) are loaded but never evaluated.
+    Returns:
+      {
+        "matched": [violation match dicts...],
+        "applicable": [in-scope rule dicts with violated/pass_parameters...],
+      }
     """
     if ruleset is not None:
         data = ruleset
@@ -412,29 +531,77 @@ def evaluate_layer1(
         r for r in rules if not _is_population_gate(r) and not _is_context_gate(r)
     ]
 
+    matched: list[dict] = []
+    applicable: list[dict] = []
+
     for rule in population_gates:
         condition = rule.get("condition") or {}
         hit, matched_parameters = evaluate_condition(condition, plan, rule)
+        pass_parameters = _build_pass_parameters(rule, plan)
+        applicable.append(
+            _applicable_result(
+                rule,
+                violated=hit,
+                pass_parameters=pass_parameters if pass_parameters is not None else {},
+                skip_pass_fact=(not hit and pass_parameters is None),
+            )
+        )
         if hit:
-            return [_match_result(rule, matched_parameters)]
-
-    matches: list[dict] = []
+            # Out-of-scope population: short-circuit remaining Layer1 rules.
+            return {
+                "matched": [_match_result(rule, matched_parameters)],
+                "applicable": applicable,
+            }
 
     # Context gates first (early), but continue so week-specific RTT rules can also match.
     # TODO: Layer2実装後は context_gate の即時reject vs routing を再検討
     for rule in context_gates:
-        if not _rule_applies(rule, plan):
+        if not _rule_in_evaluation_scope(rule, plan):
             continue
         condition = rule.get("condition") or {}
         hit, matched_parameters = evaluate_condition(condition, plan, rule)
+        pass_parameters = _build_pass_parameters(rule, plan)
+        applicable.append(
+            _applicable_result(
+                rule,
+                violated=hit,
+                pass_parameters=pass_parameters if pass_parameters is not None else {},
+                skip_pass_fact=(not hit and pass_parameters is None),
+            )
+        )
         if hit:
-            matches.append(_match_result(rule, matched_parameters))
+            matched.append(_match_result(rule, matched_parameters))
 
     for rule in other_rules:
-        if not _rule_applies(rule, plan):
+        if not _rule_in_evaluation_scope(rule, plan):
             continue
         condition = rule.get("condition") or {}
         hit, matched_parameters = evaluate_condition(condition, plan, rule)
+        pass_parameters = _build_pass_parameters(rule, plan)
+        applicable.append(
+            _applicable_result(
+                rule,
+                violated=hit,
+                pass_parameters=pass_parameters if pass_parameters is not None else {},
+                skip_pass_fact=(not hit and pass_parameters is None),
+            )
+        )
         if hit:
-            matches.append(_match_result(rule, matched_parameters))
-    return matches
+            matched.append(_match_result(rule, matched_parameters))
+
+    return {"matched": matched, "applicable": applicable}
+
+
+def evaluate_layer1(
+    plan: dict,
+    rules_path: str | Path | None = None,
+    ruleset: dict | None = None,
+) -> list[dict]:
+    """Evaluate Layer1 rules against a structured training plan.
+
+    Returns only violated/matched rules (backward-compatible). For the full
+    applicable-rule list used by Layer1-B, call ``evaluate_layer1_detailed``.
+    """
+    return evaluate_layer1_detailed(plan, rules_path=rules_path, ruleset=ruleset)[
+        "matched"
+    ]

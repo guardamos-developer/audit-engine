@@ -57,6 +57,31 @@ def test_corrected_layoff_plan_matches_nothing():
     assert result["verdict"] == "pass"
 
 
+def test_corrected_layoff_plan_checked_facts_include_week1_rtt_pass():
+    """Pass path: Layer1-B collects week-1 RTT pass facts (not Week2).
+
+    intensity_percent_1RM is null in the sample plan, so L1-RTT-0002b has no
+    observed metric and is omitted (Layer1-B does not invent pass claims).
+    """
+    plan = _load_json(CORRECTED_PLAN_PATH)
+    result = run_audit(plan, lang="en", skip_layer3=True)
+    assert result["verdict"] == "pass"
+    fact_ids = {f["rule_id"] for f in result["checked_facts"]}
+    for rid in (
+        "L1-RTT-0001",
+        "L1-RTT-0002a",
+        "L1-RTT-0002c",
+        "L1-RTT-0002d",
+    ):
+        assert rid in fact_ids
+    assert "L1-RTT-0002b" not in fact_ids  # intensity not reported
+    # Week2 progression rules are out of scope for weeks_since_return == 1
+    assert "L1-RTT-0002e" not in fact_ids
+    assert "L1-RTT-0002f" not in fact_ids
+    assert "L1-RTT-0002g" not in fact_ids
+    assert "L1-RTT-0002h" not in fact_ids
+
+
 def test_no_layoff_does_not_fire_rtt_rules():
     """No layoff (unset or <4 weeks) → L1-RTT-0001 / 0002a-h do not fire."""
     normal = {

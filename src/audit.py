@@ -1,4 +1,4 @@
-"""Audit orchestration: Layer1 + Layer2 stub + Layer3 + explanations."""
+"""Audit orchestration: Layer1 + Layer1-B + Layer2 stub + Layer3 + explanations."""
 
 from __future__ import annotations
 
@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from .explanation import render_explanation
-from .layer1_engine import evaluate_layer1, load_merged_rulesets, load_ruleset
+from .layer1_engine import evaluate_layer1_detailed, load_merged_rulesets, load_ruleset
+from .layer1b_synthesizer import collect_applicable_facts
 from .layer2_stub import evaluate_layer2
 from .layer3_generator import generate_layer3_response
 
@@ -45,28 +46,40 @@ def run_audit(
         ruleset = load_merged_rulesets()
     ruleset_version = ruleset.get("ruleset_id", "L1-RT-ACSM2026-v1")
 
-    layer1_matches = evaluate_layer1(plan, ruleset=ruleset)
+    layer1_result = evaluate_layer1_detailed(plan, ruleset=ruleset)
+    layer1_matches = layer1_result["matched"]
     layer2_matches = evaluate_layer2(plan)
 
     verdict = _derive_verdict(layer1_matches, layer2_matches)
     all_matches = layer1_matches + layer2_matches
 
     explanations = [
-        render_explanation(m, m.get("matched_parameters") or {}, lang=lang)
+        render_explanation(
+            m, m.get("matched_parameters") or {}, lang=lang, side="flagged"
+        )
         for m in all_matches
     ]
     explanations = [e for e in explanations if e]
 
+    checked_facts: list[dict] = []
     layer3_response = None
     layer3_verdict = _verdict_for_layer3(verdict)
-    # Only call LLM when clear; never for flagged/rejected.
-    if layer3_verdict == "clear" and not skip_layer3:
-        layer3_response = generate_layer3_response(plan, layer3_verdict) or None
+    # Layer1-B + Layer3 only on clear/pass; never for flagged/rejected.
+    if layer3_verdict == "clear":
+        checked_facts = collect_applicable_facts(plan, layer1_result)
+        if not skip_layer3:
+            layer3_response = (
+                generate_layer3_response(
+                    plan, layer3_verdict, checked_facts=checked_facts
+                )
+                or None
+            )
 
     return {
         "verdict": verdict,
         "matched_rules": [m["rule_id"] for m in all_matches],
         "explanations": explanations,
+        "checked_facts": checked_facts,
         "layer3_response": layer3_response,
         "ruleset_version": ruleset_version,
     }

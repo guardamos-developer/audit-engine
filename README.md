@@ -56,8 +56,8 @@ Three layers:
 
 | Ruleset | Source | Status |
 |---|---|---|
-| `layer1_rules_acsm_rt_v1.json` | Currier et al. American College of Sports Medicine Position Stand: Resistance Training Prescription for Muscle Function, Hypertrophy, and Physical Performance in Healthy Adults. *Med Sci Sports Exerc.* 2026;58(4):851-872. | `pending_source_check` |
-| `layer1_rules_cscca_return_to_training_v1.json` | Caterisano et al. CSCCa and NSCA Joint Consensus Guidelines for Transition Periods: Safe Return to Training Following Inactivity. *Strength Cond J.* 2019;41(3):1-23. | `pending_source_check` |
+| `layer1_rules_acsm_rt_v1.json` | Currier et al. American College of Sports Medicine Position Stand: Resistance Training Prescription for Muscle Function, Hypertrophy, and Physical Performance in Healthy Adults. *Med Sci Sports Exerc.* 2026;58(4):851-872. | `verified` |
+| `layer1_rules_cscca_return_to_training_v1.json` | Caterisano et al. CSCCa and NSCA Joint Consensus Guidelines for Transition Periods: Safe Return to Training Following Inactivity. *Strength Cond J.* 2019;41(3):1-23. (also includes one ECSS/ACSM overtraining rule: `L1-ECSS-0001`) | `pending_source_check` |
 
 `pending_source_check` means a rule was extracted with LLM assistance and hasn't yet been manually cross-checked against the source PDF line-by-line. Treat rule content as a draft until its `verification_status` field is updated to `verified`.
 

@@ -7,47 +7,26 @@ import os
 CLEAR_VERDICTS = frozenset({"clear", "pass"})
 BLOCKED_VERDICTS = frozenset({"rejected", "flagged"})
 
-_CONTEXT_FIELDS = (
-    "goal",
-    "sessions_per_week",
-    "sets_per_exercise",
-    "load_percent_1RM",
-    "inactivity_duration_weeks",
-    "weeks_since_return",
-    "plan_follows_long_inactivity_track",
-    "weekly_sets_per_muscle_group",
-)
 
-
-def _plan_summary_for_prompt(plan: dict) -> str:
-    """Include only fields that are present (not None) so context can be cited."""
-    parts: list[str] = []
-    for key in _CONTEXT_FIELDS:
-        if key not in plan:
-            continue
-        value = plan.get(key)
-        if value is None:
-            continue
-        parts.append(f"{key}={value}")
-
-    week_params = plan.get("plan_week_parameters")
-    if isinstance(week_params, dict) and week_params:
-        parts.append(f"plan_week_parameters={week_params}")
-
-    return ", ".join(parts) if parts else "no structured fields provided"
-
-
-def generate_layer3_response(plan: dict, layer1_2_verdict: str) -> str:
-    """Generate a brief professional audit summary only when the verdict is clear.
+def generate_layer3_response(
+    plan: dict,
+    layer1_2_verdict: str,
+    checked_facts: list[dict] | None = None,
+) -> str:
+    """Generate a brief summary from Layer1-B pass facts when the verdict is clear.
 
     When ``layer1_2_verdict`` is ``rejected`` or ``flagged``, skips the LLM
-    call and returns an empty string so unsafe domains never receive free-form
-    prose.
+    call and returns an empty string. Does not use raw plan fields — only the
+    structured ``checked_facts`` list from Layer1-B.
     """
     verdict = (layer1_2_verdict or "").strip().lower()
     if verdict in BLOCKED_VERDICTS:
         return ""
     if verdict not in CLEAR_VERDICTS:
+        return ""
+
+    facts = checked_facts or []
+    if not facts:
         return ""
 
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -64,27 +43,25 @@ def generate_layer3_response(plan: dict, layer1_2_verdict: str) -> str:
         ) from exc
 
     client = OpenAI(api_key=api_key)
-    plan_summary = _plan_summary_for_prompt(plan)
+    fact_lines = "\n".join(
+        f"- [{f.get('rule_id', '?')}] {f.get('text', '').strip()}"
+        for f in facts
+        if f.get("text")
+    )
 
     prompt = (
-        "You are writing a brief audit-report summary for a resistance-training plan "
-        "that has already passed deterministic rule checks (clear/pass). "
-        "State the outcome in a calm, professional tone.\n\n"
+        "You are writing a brief audit-report summary. The plan has already "
+        "passed deterministic Layer1 checks. You are given only the confirmed "
+        "pass facts below.\n\n"
         "Requirements:\n"
-        "- 2–3 sentences only.\n"
-        "- No exclamation marks. No pep-talk or cheerleading "
-        "(e.g. avoid 'You've got this!', 'Keep crushing it', motivational slogans).\n"
-        "- If context fields such as inactivity_duration_weeks or weeks_since_return "
-        "are present, mention them and explain factually why the stated frequency/"
-        "intensity is appropriate for that return-to-training context.\n"
-        "- Do not invent new medical claims, diagnoses, or recommendations beyond "
-        "what is implied by the plan fields and a clear audit pass.\n"
-        "- Stay within the provided plan data; summarize alignment as factual "
-        "observation, not encouragement.\n"
-        "- Tone example: \"This 2-session-per-week plan aligns with recommended "
-        "guidance for resuming training after an extended break, allowing gradual "
-        "reconditioning without excessive early-week load.\"\n\n"
-        f"Plan fields: {plan_summary}."
+        "- Write 1–2 sentences in a calm, professional audit-report tone.\n"
+        "- Paraphrase only the provided facts. Do not add any claim, number, "
+        "recommendation, or medical assertion that is not already stated in "
+        "those facts.\n"
+        "- No exclamation marks. No pep-talk or motivational language.\n"
+        "- If a fact mentions return-from-inactivity / week-1 context, you may "
+        "reflect that context, but only using wording supported by the facts.\n\n"
+        f"Confirmed pass facts:\n{fact_lines}"
     )
 
     response = client.chat.completions.create(
