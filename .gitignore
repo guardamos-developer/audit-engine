@@ -4,3 +4,6 @@ __pycache__/
 *.pyc
 *.py[cod]
 .pytest_cache/
+*.db
+.DS_Store
+billing/

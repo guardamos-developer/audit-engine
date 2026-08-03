@@ -18,6 +18,23 @@ load_dotenv(ROOT / ".env")
 
 from src.audit import run_audit  # noqa: E402
 
+# ---------------------------------------------------------------------------
+# Future API auth design (not implemented — audit-engine is still CLI-only):
+#
+# When this tool is exposed as an HTTP API (e.g. POST /audit), require clients
+# to send `X-API-Key: gdm_test_...` (or gdm_live_...). Validate against the
+# separate private billing service / shared key store, e.g.:
+#
+#   # billing lives in github.com/guardamos-developer/billing (private)
+#   from billing.api_keys import validate_api_key  # or an HTTP call to billing
+#   if not validate_api_key(request.headers.get("X-API-Key", "")):
+#       raise HTTPException(401, "Invalid or missing API key")
+#
+# Keys are minted by billing on Stripe checkout.session.completed.
+# Keep billing and audit-engine loosely coupled (shared DB path via
+# GUARDAMOS_API_KEYS_DB, or a later shared store / internal validate endpoint).
+# ---------------------------------------------------------------------------
+
 
 SAMPLE_PLAN = {
     "target_population": "healthy_adult_18plus",

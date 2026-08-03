@@ -27,20 +27,24 @@ $ python main.py sample_plans/chatgpt_6month_layoff.json --lang en --skip-layer3
   "matched_rules": ["L1-RTT-0001", "L1-RTT-0002a", "L1-RTT-0002d"],
   "explanations": [
     "The input indicates a return to training after a prolonged period of inactivity (26 weeks). CSCCa/NSCA guidelines require this population to follow the dedicated 'return from long inactivity' track...",
-    "Week 1 of return-to-training after long inactivity recommends no more than 2 set(s) per exercise (Table 9, Week 1 row). The plan's value (4) exceeds this.",
-    "Week 1 of return-to-training after long inactivity recommends no more than 2 session(s) per week (Table 9, Week 1 row). The plan's value (4) exceeds this."
+    "Table 9 (p.16) recommends 1-2 sets per exercise in week 1 of return-to-training after long inactivity. This audit flags exceeding the top of that range (>2) as the risk-relevant threshold. The plan's value (4) exceeds it.",
+    "Table 9 (p.16) recommends 1-2 sessions per week in week 1 of return-to-training after long inactivity. This audit flags exceeding the top of that range (>2) as the risk-relevant threshold. The plan's value (4) exceeds it."
   ]
 }
 ```
 
-A plan adjusted for the same context, in line with the relevant guideline's week-1 recommendations, passes — and still gets an explanation:
+A plan adjusted for the same context, in line with the relevant guideline's week-1 recommendations, passes. Rather than a silent pass, every applicable rule that was checked (not just the ones that failed) is returned as a `checked_facts` entry, and a short natural-language summary is generated from those facts alone — not from freely re-reading the plan:
 
 ```
 $ python main.py sample_plans/chatgpt_6month_layoff_corrected.json --lang en
 {
   "verdict": "pass",
   "matched_rules": [],
-  "layer3_response": "The established resistance-training plan consists of 2 sessions per week, with 2 sets per exercise, which is appropriate for a gradual return to training after a 26-week period of inactivity..."
+  "checked_facts": [
+    { "rule_id": "L1-RTT-0001", "text": "For this long-inactivity context, the plan follows the dedicated 'return from long inactivity' track..." },
+    { "rule_id": "L1-RTT-0002a", "text": "Set volume in week 1 (2 set(s)/exercise) falls within the range Table 9 (p.16) recommends for this stage (1-2 sets)." }
+  ],
+  "layer3_response": "For this long-inactivity context, the plan follows the dedicated return from long inactivity track... the training parameters in week 1 are consistent with the guidelines provided for individuals returning from long inactivity."
 }
 ```
 
@@ -56,8 +60,8 @@ Three layers:
 
 | Ruleset | Source | Status |
 |---|---|---|
-| `layer1_rules_acsm_rt_v1.json` | Currier et al. American College of Sports Medicine Position Stand: Resistance Training Prescription for Muscle Function, Hypertrophy, and Physical Performance in Healthy Adults. *Med Sci Sports Exerc.* 2026;58(4):851-872. | `verified` |
-| `layer1_rules_cscca_return_to_training_v1.json` | Caterisano et al. CSCCa and NSCA Joint Consensus Guidelines for Transition Periods: Safe Return to Training Following Inactivity. *Strength Cond J.* 2019;41(3):1-23. (also includes one ECSS/ACSM overtraining rule: `L1-ECSS-0001`) | `pending_source_check` |
+| `layer1_rules_acsm_rt_v1.json` | Currier et al. American College of Sports Medicine Position Stand: Resistance Training Prescription for Muscle Function, Hypertrophy, and Physical Performance in Healthy Adults. *Med Sci Sports Exerc.* 2026;58(4):851-872. | `pending_source_check` |
+| `layer1_rules_cscca_return_to_training_v1.json` | Caterisano et al. CSCCa and NSCA Joint Consensus Guidelines for Transition Periods: Safe Return to Training Following Inactivity. *Strength Cond J.* 2019;41(3):1-23. | `pending_source_check` |
 
 `pending_source_check` means a rule was extracted with LLM assistance and hasn't yet been manually cross-checked against the source PDF line-by-line. Treat rule content as a draft until its `verification_status` field is updated to `verified`.
 
