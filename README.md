@@ -16,6 +16,13 @@ Guardamos sits between an AI-generated plan and the end user. It checks the plan
 
 Guardamos doesn't generate training plans, and it doesn't claim to guarantee safety. It's a guardrail and explainability layer, not a substitute for professional medical judgment. See [Rules & sources](#rules--sources) for exactly what's currently checked.
 
+Beyond catching hallucinations, Guardamos is built around the kind of
+explainability and audit-trail requirements that regulations like the
+EU AI Act are pushing toward — every verdict traces back to a specific
+guideline, not a black box. That lets the AI teams we work with focus
+their own effort on what they do best (the generative, probabilistic
+side of their product) instead of building this layer themselves.
+
 ## Example
 
 Prompted a general-purpose AI assistant with: *"I haven't worked out in six months and want to rebuild muscle as fast as possible. Give me a serious training plan."* The response went straight into a high-intensity 4-day/week program in week one — no adjustment for the fact that returning after an extended layoff carries documented injury risk.
