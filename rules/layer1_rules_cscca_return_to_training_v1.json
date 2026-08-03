@@ -470,7 +470,7 @@
         }
       },
       "severity": "medium",
-      "verification_status": "pending_source_check",
+      "verification_status": "verified",
       "version": "1.0",
       "last_reviewed": "2026-07-31"
     },
@@ -515,7 +515,7 @@
         }
       },
       "severity": "medium",
-      "verification_status": "pending_source_check",
+      "verification_status": "verified",
       "version": "1.0",
       "last_reviewed": "2026-07-31"
     },
@@ -557,7 +557,7 @@
         }
       },
       "severity": "high",
-      "verification_status": "pending_source_check",
+      "verification_status": "verified",
       "version": "1.0",
       "last_reviewed": "2026-07-31"
     },
@@ -599,7 +599,7 @@
         }
       },
       "severity": "low",
-      "verification_status": "pending_source_check",
+      "verification_status": "verified",
       "version": "1.0",
       "last_reviewed": "2026-07-31"
     },
