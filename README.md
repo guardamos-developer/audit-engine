@@ -100,6 +100,11 @@ context in the first place. Always send both.
 
 Early-stage, solo-maintained, build-in-public project. Not a medical device. Not intended to make clinical decisions or replace professional medical guidance. Currently scoped to general resistance-training programming for healthy adults — see each rule's `applicability` field for exact population scope and exclusions.
 
+Guardamos is designed as a development-time and pre-deployment
+verification tool, not as a real-time safety-critical component embedded
+in a live inference path. It is not intended to be called synchronously
+to gate what an end user sees before a response is shown to them.
+
 ## Contact
 
 - X: [@guardamos_dev](https://x.com/guardamos_dev)
