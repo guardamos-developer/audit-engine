@@ -85,6 +85,17 @@ python main.py sample_plans/chatgpt_6month_layoff.json --lang en
 python -m pytest tests/ -v
 ```
 
+## A note on input format
+
+The `--raw-text` mode expects both the original user prompt and the AI's
+response, not the response alone. Population-relevant context (injury,
+pregnancy, age, recent surgery) usually appears in the prompt, not in the
+generated plan itself. Submitting the response without the prompt risks
+missing that context entirely — the current design defaults to *not*
+excluding a population when this information is simply absent, which is
+the safer failure mode, but it is not a substitute for providing the
+context in the first place. Always send both.
+
 ## Status
 
 Early-stage, solo-maintained, build-in-public project. Not a medical device. Not intended to make clinical decisions or replace professional medical guidance. Currently scoped to general resistance-training programming for healthy adults — see each rule's `applicability` field for exact population scope and exclusions.
