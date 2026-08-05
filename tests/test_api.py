@@ -50,13 +50,48 @@ def _zero_rest_pipeline_payload() -> dict:
     }
 
 
-def test_health_reports_openai_key_diagnostics(client: TestClient):
+def test_health_is_public_liveness_only(client: TestClient):
     response = client.get("/health")
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "ok"
-    assert "openai_api_key_set" in body
-    assert "openai_api_key_starts_with_sk" in body
+    assert body == {"status": "ok", "service": "guardamos-audit-engine"}
+    assert "openai_api_key_set" not in body
+
+
+def test_internal_diagnostics_requires_secret(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("GUARDAMOS_DIAGNOSTICS_SECRET", "diag-test-secret")
+    denied = client.get("/internal/diagnostics")
+    assert denied.status_code == 401
+    wrong = client.get(
+        "/internal/diagnostics",
+        headers={"X-Diagnostics-Secret": "wrong"},
+    )
+    assert wrong.status_code == 401
+
+
+def test_internal_diagnostics_returns_env_status(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("GUARDAMOS_DIAGNOSTICS_SECRET", "diag-test-secret")
+    monkeypatch.setenv("OPENAI_API_KEY", "  sk-test-example  ")
+    monkeypatch.setenv("BILLING_VALIDATE_URL", "https://example.test/validate")
+    response = client.get(
+        "/internal/diagnostics",
+        headers={"X-Diagnostics-Secret": "diag-test-secret"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["openai_api_key_set"] is True
+    assert body["openai_api_key_starts_with_sk"] is True
+    assert body["openai_api_key_had_leading_or_trailing_whitespace"] is True
+    assert body["billing_validate_url_configured"] is True
+
+
+def test_internal_diagnostics_unconfigured(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("GUARDAMOS_DIAGNOSTICS_SECRET", raising=False)
+    response = client.get(
+        "/internal/diagnostics",
+        headers={"X-Diagnostics-Secret": "anything"},
+    )
+    assert response.status_code == 503
 
 
 def test_audit_requires_api_key(client: TestClient):
@@ -128,9 +163,3 @@ def test_validate_api_key_via_billing_calls_billing_http():
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
         assert kwargs["params"] == {"key": "gdm_test_abc"}
-
-
-def test_health(client: TestClient):
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["status"] == "ok"

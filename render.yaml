@@ -19,3 +19,5 @@ services:
         sync: false
       - key: BILLING_VALIDATE_URL
         sync: false
+      - key: GUARDAMOS_DIAGNOSTICS_SECRET
+        sync: false

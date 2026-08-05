@@ -8,6 +8,7 @@ not store or query customer key data itself.
 from __future__ import annotations
 
 import os
+import secrets
 from typing import Any
 
 import httpx
@@ -30,6 +31,23 @@ def _billing_validate_url() -> str:
         or os.environ.get("GUARDAMOS_BILLING_VALIDATE_URL")
         or DEFAULT_BILLING_VALIDATE_URL
     )
+
+
+def _diagnostics_secret() -> str:
+    return (os.environ.get("GUARDAMOS_DIAGNOSTICS_SECRET") or "").strip()
+
+
+def _require_diagnostics_auth(x_diagnostics_secret: str | None) -> None:
+    """Gate internal diagnostics behind a dedicated admin secret (not customer API keys)."""
+    expected = _diagnostics_secret()
+    if not expected:
+        raise HTTPException(
+            status_code=503,
+            detail="Diagnostics endpoint is not configured",
+        )
+    provided = (x_diagnostics_secret or "").strip()
+    if not provided or not secrets.compare_digest(provided, expected):
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 def _openai_api_key_status() -> dict[str, Any]:
@@ -76,9 +94,18 @@ class AuditRequest(BaseModel):
 
 
 @app.get("/health")
-def health() -> dict[str, Any]:
+def health() -> dict[str, str]:
+    """Public liveness probe — no configuration details."""
+    return {"status": "ok", "service": "guardamos-audit-engine"}
+
+
+@app.get("/internal/diagnostics")
+def internal_diagnostics(
+    x_diagnostics_secret: str | None = Header(default=None, alias="X-Diagnostics-Secret"),
+) -> dict[str, Any]:
+    """Operator-only env diagnostics (requires ``GUARDAMOS_DIAGNOSTICS_SECRET``)."""
+    _require_diagnostics_auth(x_diagnostics_secret)
     return {
-        "status": "ok",
         "service": "guardamos-audit-engine",
         **_openai_api_key_status(),
         "billing_validate_url_configured": bool(
