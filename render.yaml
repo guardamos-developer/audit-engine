@@ -1,0 +1,21 @@
+# Render Blueprint for Guardamos audit-engine (public API).
+# After billing is live, set BILLING_VALIDATE_URL to:
+#   https://<billing-service>.onrender.com/validate
+# OPENAI_API_KEY and BILLING_VALIDATE_URL are dashboard secrets — do not commit.
+
+services:
+  - type: web
+    name: guardamos-audit-engine
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn src.api:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: BILLING_VALIDATE_URL
+        sync: false

@@ -1,0 +1,17 @@
+{
+  "user_prompt": "It's been about 7 months since I trained. Starting fresh with a program of 5 days a week, 3 sets each exercise, pushing to about 85% of my max, 90 seconds rest between sets.",
+  "ai_response": "Understood — you want to restart hard after roughly seven months away: five training days weekly, three sets per lift, around 85% of max, and 90-second rests.",
+  "expected_plan": {
+    "target_population": "healthy_adult_18plus",
+    "goal": "strength",
+    "inactivity_duration_weeks": 30,
+    "weeks_since_return": 1,
+    "sessions_per_week": 5,
+    "sets_per_exercise": 3,
+    "intensity_percent_1RM": 85,
+    "rest_minutes": 1.5
+  },
+  "expected_track_compliance": "violated",
+  "inactivity_duration_weeks_range": [28, 30],
+  "source_note": "Synthetic independent case for Table 9 week-1 track-compliance generalization (fail)."
+}

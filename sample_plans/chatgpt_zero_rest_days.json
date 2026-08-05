@@ -1,0 +1,9 @@
+{
+  "target_population": "healthy_adult_18plus",
+  "goal": "general",
+  "sessions_per_week": 7,
+  "rest_days_per_week": 0,
+  "sets_per_exercise": 4,
+  "program_mandates_training_to_failure": false,
+  "weekly_sets_per_muscle_group": 16
+}

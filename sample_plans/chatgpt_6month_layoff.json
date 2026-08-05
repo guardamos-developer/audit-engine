@@ -2,7 +2,6 @@
   "target_population": "healthy_adult_18plus",
   "goal": "hypertrophy",
   "inactivity_duration_weeks": 26,
-  "plan_follows_long_inactivity_track": false,
   "weeks_since_return": 1,
   "sessions_per_week": 4,
   "sets_per_exercise": 4,

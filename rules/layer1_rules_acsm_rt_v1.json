@@ -29,7 +29,7 @@
       },
       "condition": {
         "type": "population_check",
-        "check": "target_population NOT IN applicability.population OR target_population IN applicability.excludes"
+        "check": "positive exclusion flag in applicability.excludes (injury_present / post_surgical / pain_present / minor / pregnant); null/unknown flags do not reject"
       },
       "action": "route_to_layer2_or_reject",
       "reason_template": {
@@ -111,7 +111,8 @@
           "post_surgical",
           "pain_present",
           "minor",
-          "pregnant"
+          "pregnant",
+          "true_beginner_first_weeks"
         ]
       },
       "condition": {

@@ -42,6 +42,18 @@ ACTIVE_RULE_IDS = frozenset(
         "L1-RTT-0002f",
         "L1-RTT-0002g",
         "L1-RTT-0002h",
+        # CSCCa moderate return track (2-to-<4-week break)
+        "L1-RTT-0008",
+        "L1-RTT-0009",
+        "L1-RTT-0010",
+        # ECSS/ACSM overtraining (rest / recovery)
+        "L1-ECSS-0001",
+        "L1-ECSS-0002",
+        # CSCCa FIT / rhabdo / medical clearance (Tier 3 — verified)
+        "L1-RTT-0003",
+        "L1-RTT-0004",
+        "L1-RTT-0005",
+        "L1-RTT-0006",
     }
 )
 
@@ -110,6 +122,16 @@ def _plan_exclusion_tags(plan: dict) -> set[str]:
     experience = plan.get("experience_level")
     if isinstance(experience, str):
         tags.add(experience)
+    # Boolean exclusion flags from plan_extractor / structured plans.
+    for flag in (
+        "injury_present",
+        "post_surgical",
+        "pain_present",
+        "minor",
+        "pregnant",
+    ):
+        if plan.get(flag) is True:
+            tags.add(flag)
     for key in ("excludes", "flags", "attributes"):
         value = plan.get(key)
         if isinstance(value, list):
@@ -124,11 +146,22 @@ def _is_long_inactivity_context(plan: dict) -> bool:
     weeks = plan.get("inactivity_duration_weeks")
     if weeks is not None and weeks >= 4:
         return True
-    if plan.get("plan_follows_long_inactivity_track") is True:
-        return True
     if plan.get("population_is_long_inactivity") is True:
         return True
     return "long_inactivity" in _plan_exclusion_tags(plan)
+
+
+def _is_moderate_return_context(plan: dict) -> bool:
+    """True when the plan is in the 2-to-<4-week moderate / returning-athlete track."""
+    weeks = plan.get("inactivity_duration_weeks")
+    if weeks is not None and 2 <= weeks < 4:
+        return True
+    if plan.get("population_is_moderate_return") is True:
+        return True
+    if plan.get("population_is_moderate_inactivity") is True:
+        return True
+    tags = _plan_exclusion_tags(plan)
+    return bool(tags & {"moderate_return", "moderate_inactivity"})
 
 
 def _rule_applies(rule: dict, plan: dict) -> bool:
@@ -149,6 +182,12 @@ def _rule_applies(rule: dict, plan: dict) -> bool:
     # Rules tagged for long_inactivity only apply in that return context.
     if "long_inactivity" in population and not _is_long_inactivity_context(plan):
         return False
+    # Moderate / returning-athlete track (JSON uses moderate_inactivity or moderate_return).
+    if (
+        {"moderate_return", "moderate_inactivity"} & set(population)
+        and not _is_moderate_return_context(plan)
+    ):
+        return False
 
     return True
 
@@ -157,6 +196,15 @@ def _resolve_plan_value(plan: dict, field: str) -> Any:
     """Resolve a field from top-level plan or the current week's parameters."""
     if field in plan and plan.get(field) is not None:
         return plan.get(field)
+
+    # Derived long-inactivity flag (used in L1-RTT-0003/0005/0006 compound checks).
+    if field == "population_is_long_inactivity":
+        weeks = plan.get("inactivity_duration_weeks")
+        if weeks is not None:
+            return weeks >= 4
+        if "long_inactivity" in _plan_exclusion_tags(plan):
+            return True
+        return None
 
     week_n = plan.get("weeks_since_return")
     week_params_root = plan.get("plan_week_parameters") or {}
@@ -176,17 +224,203 @@ def _resolve_plan_value(plan: dict, field: str) -> Any:
     return None
 
 
+def _enrich_week_dependent_params(params: dict, plan: dict) -> dict:
+    """Resolve week-scoped aliases such as ``min_denominator_for_week`` (L1-RTT-0004)."""
+    out = dict(params)
+    week = plan.get("weeks_since_return")
+    if "week_1_min_denominator" in out or "week_2_min_denominator" in out:
+        if week == 1 and "week_1_min_denominator" in out:
+            out["min_denominator_for_week"] = out["week_1_min_denominator"]
+        elif week == 2 and "week_2_min_denominator" in out:
+            out["min_denominator_for_week"] = out["week_2_min_denominator"]
+    return out
+
+
+_ATOMIC_CLAUSE_RE = re.compile(
+    r"^(?P<field>\w+)\s*(?P<op><=|>=|==|!=|<|>)\s*(?P<rhs>true|false|-?\d+(?:\.\d+)?|\w+)$",
+    re.IGNORECASE,
+)
+_FIELD_LHS_RE = re.compile(
+    r"\b([A-Za-z_][A-Za-z0-9_]*)\s*(?:==|!=|<=|>=|<|>)"
+)
+_RESERVED_TOKENS = frozenset({"true", "false", "and", "or", "not", "between"})
+
+
+def _split_top_level(expr: str, connector: str) -> list[str]:
+    """Split ``expr`` on top-level AND/OR (ignoring parentheses)."""
+    parts: list[str] = []
+    depth = 0
+    buf: list[str] = []
+    tokens = re.split(rf"(\s+{connector}\s+|\(|\))", expr, flags=re.IGNORECASE)
+    for tok in tokens:
+        if not tok:
+            continue
+        if tok == "(":
+            depth += 1
+            buf.append(tok)
+        elif tok == ")":
+            depth = max(0, depth - 1)
+            buf.append(tok)
+        elif depth == 0 and re.fullmatch(rf"\s+{connector}\s+", tok, re.IGNORECASE):
+            parts.append("".join(buf).strip())
+            buf = []
+        else:
+            buf.append(tok)
+    tail = "".join(buf).strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def _strip_outer_parens(expr: str) -> str:
+    text = expr.strip()
+    while text.startswith("(") and text.endswith(")"):
+        depth = 0
+        balanced = True
+        for i, ch in enumerate(text):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0 and i != len(text) - 1:
+                    balanced = False
+                    break
+        if balanced and depth == 0:
+            text = text[1:-1].strip()
+        else:
+            break
+    return text
+
+
+def _referenced_fields_in_check(check: str) -> list[str]:
+    """Extract LHS field names from a compound check expression (order preserved)."""
+    fields: list[str] = []
+    seen: set[str] = set()
+    for match in _FIELD_LHS_RE.finditer(check or ""):
+        name = match.group(1)
+        if name.lower() in _RESERVED_TOKENS:
+            continue
+        if name not in seen:
+            seen.add(name)
+            fields.append(name)
+    return fields
+
+
+def _evaluate_atomic_clause(
+    clause: str, plan: dict, params: dict
+) -> tuple[bool | None, dict | None]:
+    """Evaluate one atomic comparison. Returns (hit, info); hit=None if unevaluable."""
+    text = _strip_outer_parens(clause)
+    match = _ATOMIC_CLAUSE_RE.match(text)
+    if not match:
+        raise ValueError(f"Unsupported atomic clause: {clause!r}")
+
+    field = match.group("field")
+    op_symbol = match.group("op")
+    rhs_token = match.group("rhs")
+    observed = _resolve_plan_value(plan, field)
+    if observed is None:
+        return None, None
+
+    rhs_lower = rhs_token.lower()
+    if rhs_lower in {"true", "false"}:
+        expected = rhs_lower == "true"
+        if isinstance(observed, bool):
+            hit = (observed is expected) if op_symbol == "==" else (observed is not expected)
+        else:
+            hit = (bool(observed) == expected) if op_symbol == "==" else (
+                bool(observed) != expected
+            )
+        return hit, {
+            "field": field,
+            "observed_value": observed,
+            "expected": expected,
+            "rhs_token": rhs_token,
+        }
+
+    threshold = _resolve_rhs(rhs_token, params)
+    op_fn = _COMPARISON_OPS[op_symbol]
+    hit = op_fn(observed, threshold)
+    return hit, {
+        "field": field,
+        "observed_value": observed,
+        "threshold": threshold,
+        "rhs_token": rhs_token,
+    }
+
+
+def _evaluate_compound_expression(
+    expr: str, plan: dict, params: dict
+) -> tuple[bool | None, list[dict]]:
+    """Evaluate AND/OR compound expressions. hit=None when any atom is unevaluable."""
+    text = _strip_outer_parens(expr)
+    and_parts = _split_top_level(text, "AND")
+    if len(and_parts) > 1:
+        infos: list[dict] = []
+        for part in and_parts:
+            hit, part_infos = _evaluate_compound_expression(part, plan, params)
+            if hit is None:
+                return None, []
+            if not hit:
+                return False, []
+            infos.extend(part_infos)
+        return True, infos
+
+    or_parts = _split_top_level(text, "OR")
+    if len(or_parts) > 1:
+        infos = []
+        any_true = False
+        for part in or_parts:
+            hit, part_infos = _evaluate_compound_expression(part, plan, params)
+            if hit is None:
+                return None, []
+            if hit:
+                any_true = True
+                infos.extend(part_infos)
+        return any_true, infos
+
+    hit, info = _evaluate_atomic_clause(text, plan, params)
+    if hit is None:
+        return None, []
+    return hit, [info] if info is not None else []
+
+
+def _positive_exclusion_flags(plan: dict, excludes: set[str]) -> set[str]:
+    """Return exclude tags that are affirmatively present on the plan.
+
+    A missing / null flag is NOT treated as out-of-scope — only explicit
+    positives (boolean True, or target_population equal to an exclude tag).
+    """
+    positive: set[str] = set()
+    for flag in excludes:
+        if plan.get(flag) is True:
+            positive.add(flag)
+    target = plan.get("target_population")
+    if isinstance(target, str) and target in excludes:
+        positive.add(target)
+    return positive
+
+
 def _evaluate_population_check(condition: dict, plan: dict, rule: dict) -> tuple[bool, dict]:
+    """Applicability gate (L1-RT-0001): reject only on positive exclusion flags.
+
+    Previously this also fired when ``target_population`` was null / unknown
+    (``target not in population``). That incorrectly short-circuited audits when
+    the extractor left the field unset. Null exclusion flags now mean
+    "unknown → assume in-scope healthy adult" and continue to later rules.
+    """
     applicability = rule.get("applicability") or {}
     population = set(applicability.get("population") or [])
     excludes = set(applicability.get("excludes") or [])
     target = plan.get("target_population")
+    positive = _positive_exclusion_flags(plan, excludes)
 
-    out_of_scope = target not in population or target in excludes
+    out_of_scope = bool(positive)
     matched_parameters = {
         "target_population": target,
         "allowed_population": sorted(population),
         "excludes": sorted(excludes),
+        "positive_exclusion_flags": sorted(positive),
     }
     return out_of_scope, matched_parameters
 
@@ -233,34 +467,31 @@ def _evaluate_numeric_threshold(condition: dict, plan: dict) -> tuple[bool, dict
     Supports both:
       - legacy: ``sessions_per_week < min_sessions_per_week``
       - CSCCa: ``weeks_since_return == 1 AND sets_per_exercise > 2``
+      - week-scoped aliases: ``work_rest_ratio_denominator < min_denominator_for_week``
     """
     check = condition.get("check", "")
-    params = dict(condition.get("parameters") or {})
-    clauses = [c.strip() for c in re.split(r"\s+AND\s+", check.strip()) if c.strip()]
-    if not clauses:
+    params = _enrich_week_dependent_params(condition.get("parameters") or {}, plan)
+    hit, clause_infos = _evaluate_compound_expression(check, plan, params)
+    if hit is not True:
         return False, {}
-
-    clause_infos: list[dict] = []
-    for clause in clauses:
-        hit, info = _evaluate_numeric_clause(clause, plan, params)
-        if not hit:
-            return False, {}
-        if info is not None:
-            clause_infos.append(info)
 
     # Prefer a non-week field for {observed_value} in reason templates.
     primary = next(
-        (i for i in reversed(clause_infos) if i["field"] != "weeks_since_return"),
+        (i for i in reversed(clause_infos) if i.get("field") != "weeks_since_return"),
         clause_infos[-1] if clause_infos else None,
     )
     matched_parameters = {**params}
     if primary is not None:
         matched_parameters["observed_value"] = primary["observed_value"]
         matched_parameters["field"] = primary["field"]
-        if primary["rhs_token"] not in params and not _NUMERIC_LITERAL_RE.match(
-            str(primary["rhs_token"])
+        rhs_token = primary.get("rhs_token")
+        if (
+            rhs_token is not None
+            and rhs_token not in params
+            and not _NUMERIC_LITERAL_RE.match(str(rhs_token))
+            and "threshold" in primary
         ):
-            matched_parameters[primary["rhs_token"]] = primary["threshold"]
+            matched_parameters[rhs_token] = primary["threshold"]
     return True, matched_parameters
 
 
@@ -295,53 +526,201 @@ def _evaluate_range_check(condition: dict, plan: dict) -> tuple[bool, dict]:
 
 
 def _evaluate_boolean_check(condition: dict, plan: dict) -> tuple[bool, dict]:
-    check = condition.get("check", "")
-    match = _BOOLEAN_CHECK_RE.match(check.strip())
-    if not match:
-        raise ValueError(f"Unsupported boolean_check check: {check!r}")
+    """Evaluate boolean_check, including AND/OR compound expressions.
 
-    field = match.group("field")
-    expected = match.group("value").lower() == "true"
-    observed = _resolve_plan_value(plan, field)
-    if observed is None:
+    Compound checks may mix boolean and numeric atoms (e.g. L1-RTT-0003/0005).
+    """
+    check = condition.get("check", "")
+    params = _enrich_week_dependent_params(condition.get("parameters") or {}, plan)
+    hit, clause_infos = _evaluate_compound_expression(check, plan, params)
+    if hit is not True:
         return False, {}
 
-    if isinstance(observed, bool):
-        hit = observed is expected
-    else:
-        hit = bool(observed) == expected
+    primary = next(
+        (
+            i
+            for i in reversed(clause_infos)
+            if i.get("field")
+            not in {"weeks_since_return", "population_is_long_inactivity"}
+        ),
+        clause_infos[-1] if clause_infos else None,
+    )
+    matched_parameters = {**params}
+    if primary is not None:
+        matched_parameters["observed_value"] = primary.get("observed_value")
+        matched_parameters["field"] = primary.get("field")
+        if "expected" in primary:
+            matched_parameters["expected"] = primary["expected"]
+        if "threshold" in primary:
+            matched_parameters["threshold"] = primary["threshold"]
+    return True, matched_parameters
 
-    matched_parameters = {
-        "observed_value": observed,
-        "field": field,
-        "expected": expected,
+
+def _is_moderate_context_gate(condition: dict) -> bool:
+    """Detect the 2-to-<4-week returning-athlete gate (vs long-inactivity gate)."""
+    params = condition.get("parameters") or {}
+    check = condition.get("check") or ""
+    if "plan_follows_moderate_return_track" in check:
+        return True
+    if "moderate_min_weeks" in params or "moderate_max_weeks" in params:
+        return True
+    # Canonical JSON uses min_weeks/max_weeks for L1-RTT-0008.
+    if "min_weeks" in params and "max_weeks" in params:
+        return True
+    return False
+
+
+def _moderate_week_bounds(params: dict) -> tuple[int, int]:
+    lo = params.get("moderate_min_weeks", params.get("min_weeks", 2))
+    hi = params.get("moderate_max_weeks", params.get("max_weeks", 4))
+    return lo, hi
+
+
+# Table 9 week-1 risk thresholds (same bounds as L1-RTT-0002a/b/c/d).
+_TABLE9_WEEK1_METRIC_FIELDS = (
+    "sessions_per_week",
+    "sets_per_exercise",
+    "intensity_percent_1RM",
+    "rest_minutes",
+)
+
+
+def evaluate_against_table9_week1(plan: dict) -> list[str]:
+    """Return metric field names that exceed Table 9 week-1 thresholds.
+
+    Mirrors L1-RTT-0002a/b/c/d:
+      - sets_per_exercise > 2
+      - intensity_percent_1RM >= 75 (also via load_percent_1RM alias)
+      - rest_minutes < 5
+      - frequency/sessions > 2
+    Only evaluates fields that are present (null → not a violation here).
+    """
+    violations: list[str] = []
+
+    sets = _resolve_plan_value(plan, "sets_per_exercise")
+    if sets is not None and sets > 2:
+        violations.append("sets_per_exercise")
+
+    intensity = _resolve_plan_value(plan, "intensity_percent_1RM")
+    if intensity is not None and intensity >= 75:
+        violations.append("intensity_percent_1RM")
+
+    rest = _resolve_plan_value(plan, "rest_minutes")
+    if rest is not None and rest < 5:
+        violations.append("rest_minutes")
+
+    # frequency_days_per_week aliases sessions_per_week when needed.
+    freq = _resolve_plan_value(plan, "frequency_days_per_week")
+    if freq is None:
+        freq = plan.get("sessions_per_week")
+    if freq is not None and freq > 2:
+        violations.append("sessions_per_week")
+
+    return violations
+
+
+def evaluate_long_inactivity_track_compliance(plan: dict) -> str:
+    """Derive long-inactivity track compliance from numeric fields.
+
+    Returns one of: ``followed``, ``violated``, ``insufficient_data``,
+    ``not_applicable``.
+
+    Instead of trusting an LLM-extracted boolean, this compares the plan's
+    extracted numeric fields (first-phase sessions_per_week, sets_per_exercise,
+    intensity_percent_1RM, rest_minutes) against the Table 9 week-1 thresholds
+    already encoded in rules L1-RTT-0002a/b/c/d.
+    """
+    weeks = plan.get("inactivity_duration_weeks")
+    if weeks is None:
+        return "not_applicable"
+    if weeks < 4:
+        # Falls under the moderate track instead (L1-RTT-0008).
+        return "not_applicable"
+
+    available_fields: list[str] = []
+    for field in _TABLE9_WEEK1_METRIC_FIELDS:
+        if field == "sessions_per_week":
+            present = (
+                plan.get("sessions_per_week") is not None
+                or _resolve_plan_value(plan, "frequency_days_per_week") is not None
+            )
+        else:
+            present = _resolve_plan_value(plan, field) is not None
+        if present:
+            available_fields.append(field)
+
+    if not available_fields:
+        return "insufficient_data"
+
+    violations = evaluate_against_table9_week1(plan)
+    return "violated" if violations else "followed"
+
+
+def _evaluate_long_inactivity_track_compliance(
+    condition: dict, plan: dict
+) -> tuple[bool, dict]:
+    """Evaluate L1-RTT-0001 via computed Table 9 week-1 compliance."""
+    status = evaluate_long_inactivity_track_compliance(plan)
+    weeks = plan.get("inactivity_duration_weeks")
+    violations = (
+        evaluate_against_table9_week1(plan) if status == "violated" else []
+    )
+    matched_parameters: dict[str, Any] = {
+        "observed_value": weeks,
+        "track_compliance": status,
+        "table9_week1_violations": violations,
+        "long_inactivity_threshold_weeks": (condition.get("parameters") or {}).get(
+            "long_inactivity_threshold_weeks", 4
+        ),
     }
-    return hit, matched_parameters
+
+    if status == "violated":
+        matched_parameters["explanation_side"] = "flagged"
+        matched_parameters["action_override"] = "reject"
+        return True, matched_parameters
+    if status == "insufficient_data":
+        matched_parameters["explanation_side"] = "insufficient_data"
+        matched_parameters["action_override"] = "flag_caution"
+        return True, matched_parameters
+    # followed / not_applicable → no match (followed still enters applicable)
+    return False, matched_parameters
 
 
 def _evaluate_context_gate(condition: dict, plan: dict) -> tuple[bool, dict]:
-    """Long-inactivity track selection gate (L1-RTT-0001).
+    """Moderate return track gate (L1-RTT-0008).
 
-    Matches when inactivity_duration_weeks >= threshold AND
-    plan_follows_long_inactivity_track is false/missing.
+    Moderate: min_weeks <= weeks < max_weeks.
+    When plan_follows_moderate_return_track is absent, treat as not followed
+    (conservative). Long-inactivity gating is handled by
+    ``long_inactivity_track_compliance``, not this path.
     """
     params = condition.get("parameters") or {}
-    threshold = params.get("long_inactivity_threshold_weeks", 4)
     weeks = plan.get("inactivity_duration_weeks")
     if weeks is None:
         return False, {}
 
-    follows_track = plan.get("plan_follows_long_inactivity_track")
-    if follows_track is None:
-        follows_track = False
+    if _is_moderate_context_gate(condition):
+        lo, hi = _moderate_week_bounds(params)
+        follows = plan.get("plan_follows_moderate_return_track")
+        if follows is None:
+            follows = False
+        hit = lo <= weeks < hi and follows is False
+        return hit, {
+            "observed_value": weeks,
+            "min_weeks": lo,
+            "max_weeks": hi,
+            "moderate_min_weeks": lo,
+            "moderate_max_weeks": hi,
+            "plan_follows_moderate_return_track": follows,
+        }
 
-    hit = weeks >= threshold and follows_track is False
-    matched_parameters = {
+    # Legacy long-inactivity context_gate (should not remain on L1-RTT-0001).
+    threshold = params.get("long_inactivity_threshold_weeks", 4)
+    hit = weeks >= threshold
+    return hit, {
         "observed_value": weeks,
         "long_inactivity_threshold_weeks": threshold,
-        "plan_follows_long_inactivity_track": follows_track,
     }
-    return hit, matched_parameters
 
 
 def evaluate_condition(condition: dict, plan: dict, rule: dict) -> tuple[bool, dict]:
@@ -357,16 +736,20 @@ def evaluate_condition(condition: dict, plan: dict, rule: dict) -> tuple[bool, d
         return _evaluate_boolean_check(condition, plan)
     if cond_type == "context_gate":
         return _evaluate_context_gate(condition, plan)
+    if cond_type == "long_inactivity_track_compliance":
+        return _evaluate_long_inactivity_track_compliance(condition, plan)
     raise ValueError(f"Unknown condition type: {cond_type!r}")
 
 
 def _match_result(rule: dict, matched_parameters: dict) -> dict:
+    action = matched_parameters.get("action_override") or rule["action"]
     return {
         "rule_id": rule["rule_id"],
-        "action": rule["action"],
+        "action": action,
         "severity": rule["severity"],
         "matched_parameters": matched_parameters,
         "reason_template": rule.get("reason_template", {}),
+        "explanation_side": matched_parameters.get("explanation_side", "flagged"),
     }
 
 
@@ -396,7 +779,8 @@ def _is_population_gate(rule: dict) -> bool:
 
 
 def _is_context_gate(rule: dict) -> bool:
-    return (rule.get("condition") or {}).get("type") == "context_gate"
+    cond_type = (rule.get("condition") or {}).get("type")
+    return cond_type in {"context_gate", "long_inactivity_track_compliance"}
 
 
 _WEEK_EQ_RE = re.compile(
@@ -418,28 +802,107 @@ def _required_week(condition: dict, params: dict) -> int | None:
 
 
 def _context_gate_in_scope(condition: dict, plan: dict) -> bool:
-    """True when the plan is in the long-inactivity situation this gate covers."""
+    """True when the plan's inactivity duration falls in this gate's week window."""
     params = condition.get("parameters") or {}
-    threshold = params.get("long_inactivity_threshold_weeks", 4)
     weeks = plan.get("inactivity_duration_weeks")
-    return weeks is not None and weeks >= threshold
+    if weeks is None:
+        return False
+    if condition.get("type") == "long_inactivity_track_compliance":
+        threshold = params.get("long_inactivity_threshold_weeks", 4)
+        return weeks >= threshold
+    if _is_moderate_context_gate(condition):
+        lo, hi = _moderate_week_bounds(params)
+        return lo <= weeks < hi
+    threshold = params.get("long_inactivity_threshold_weeks", 4)
+    return weeks >= threshold
 
 
 def _primary_metric_field(condition: dict) -> str | None:
     """Field used for {observed_value} in pass templates (non-week clause)."""
     check = condition.get("check") or ""
     cond_type = condition.get("type")
-    if cond_type == "numeric_threshold":
-        clauses = [c.strip() for c in re.split(r"\s+AND\s+", check.strip()) if c.strip()]
-        for clause in reversed(clauses):
-            m = _NUMERIC_CLAUSE_RE.match(clause)
-            if m and m.group("field") != "weeks_since_return":
-                return m.group("field")
-        return None
+    if cond_type in {"numeric_threshold", "boolean_check"}:
+        fields = _referenced_fields_in_check(check)
+        for field in reversed(fields):
+            if field not in {"weeks_since_return", "population_is_long_inactivity"}:
+                return field
+        return fields[-1] if fields else None
     if cond_type == "range_check":
         m = _RANGE_CHECK_RE.match(check.strip())
         return m.group("field") if m else None
     return None
+
+
+# Boolean population-exclusion flags that may appear in applicability.excludes.
+_EXCLUSION_BOOLEAN_FLAGS = frozenset(
+    {
+        "injury_present",
+        "post_surgical",
+        "pain_present",
+        "minor",
+        "pregnant",
+    }
+)
+
+
+def _condition_is_evaluable(condition: dict, plan: dict, rule: dict) -> bool:
+    """Three-valued gate: True only when every referenced field is non-null.
+
+    Unevaluable rules must not enter ``matched`` or ``checked_facts``. A null
+    field means "unknown", not "confirmed absent / confirmed compliant".
+
+    Compound AND/OR checks (e.g. L1-RTT-0003/0005) extract every LHS field and
+    require all of them to be present — same rule as single-field conditions.
+    """
+    cond_type = condition.get("type")
+    check = condition.get("check") or ""
+    params = _enrich_week_dependent_params(condition.get("parameters") or {}, plan)
+
+    if cond_type == "population_check":
+        excludes = set((rule.get("applicability") or {}).get("excludes") or [])
+        # Affirmative exclusion is enough to evaluate (and reject).
+        if _positive_exclusion_flags(plan, excludes):
+            return True
+        # In-scope pass requires every boolean exclude flag to be explicitly False.
+        for flag in excludes:
+            if flag in _EXCLUSION_BOOLEAN_FLAGS and plan.get(flag) is not False:
+                return False
+        return True
+
+    if cond_type in {"boolean_check", "numeric_threshold"}:
+        fields = _referenced_fields_in_check(check)
+        if not fields:
+            return False
+        for field in fields:
+            if _resolve_plan_value(plan, field) is None:
+                return False
+        # Dry-run: week-scoped RHS aliases (e.g. min_denominator_for_week) must
+        # resolve, and every atomic clause must be evaluable.
+        try:
+            hit, _ = _evaluate_compound_expression(check, plan, params)
+        except ValueError:
+            return False
+        return hit is not None
+
+    if cond_type == "range_check":
+        match = _RANGE_CHECK_RE.match(check.strip())
+        if not match:
+            return False
+        return _resolve_plan_value(plan, match.group("field")) is not None
+
+    if cond_type == "context_gate":
+        if plan.get("inactivity_duration_weeks") is None:
+            return False
+        if _is_moderate_context_gate(condition):
+            return plan.get("plan_follows_moderate_return_track") is not None
+        return True
+
+    if cond_type == "long_inactivity_track_compliance":
+        # not_applicable / insufficient_data → cannot confirm follow or violate.
+        status = evaluate_long_inactivity_track_compliance(plan)
+        return status in {"followed", "violated"}
+
+    return False
 
 
 def _build_pass_parameters(rule: dict, plan: dict) -> dict | None:
@@ -449,6 +912,9 @@ def _build_pass_parameters(rule: dict, plan: dict) -> dict | None:
     invent a pass claim for unevaluated fields.
     """
     condition = rule.get("condition") or {}
+    if not _condition_is_evaluable(condition, plan, rule):
+        return None
+
     params = dict(condition.get("parameters") or {})
     out = {**params}
     cond_type = condition.get("type")
@@ -456,9 +922,19 @@ def _build_pass_parameters(rule: dict, plan: dict) -> dict | None:
     if cond_type == "context_gate":
         weeks = plan.get("inactivity_duration_weeks")
         out["observed_value"] = weeks
-        out["plan_follows_long_inactivity_track"] = plan.get(
-            "plan_follows_long_inactivity_track"
-        )
+        if _is_moderate_context_gate(condition):
+            out["plan_follows_moderate_return_track"] = plan.get(
+                "plan_follows_moderate_return_track"
+            )
+        return out
+
+    if cond_type == "long_inactivity_track_compliance":
+        weeks = plan.get("inactivity_duration_weeks")
+        status = evaluate_long_inactivity_track_compliance(plan)
+        if status != "followed":
+            return None
+        out["observed_value"] = weeks
+        out["track_compliance"] = status
         return out
 
     if cond_type == "population_check":
@@ -472,6 +948,8 @@ def _build_pass_parameters(rule: dict, plan: dict) -> dict | None:
             return None
         out["field"] = field
         out["observed_value"] = observed
+        return out
+
     return out
 
 
@@ -536,6 +1014,8 @@ def evaluate_layer1_detailed(
 
     for rule in population_gates:
         condition = rule.get("condition") or {}
+        if not _condition_is_evaluable(condition, plan, rule):
+            continue
         hit, matched_parameters = evaluate_condition(condition, plan, rule)
         pass_parameters = _build_pass_parameters(rule, plan)
         applicable.append(
@@ -559,6 +1039,8 @@ def evaluate_layer1_detailed(
         if not _rule_in_evaluation_scope(rule, plan):
             continue
         condition = rule.get("condition") or {}
+        if not _condition_is_evaluable(condition, plan, rule):
+            continue
         hit, matched_parameters = evaluate_condition(condition, plan, rule)
         pass_parameters = _build_pass_parameters(rule, plan)
         applicable.append(
@@ -576,6 +1058,8 @@ def evaluate_layer1_detailed(
         if not _rule_in_evaluation_scope(rule, plan):
             continue
         condition = rule.get("condition") or {}
+        if not _condition_is_evaluable(condition, plan, rule):
+            continue
         hit, matched_parameters = evaluate_condition(condition, plan, rule)
         pass_parameters = _build_pass_parameters(rule, plan)
         applicable.append(

@@ -34,8 +34,8 @@
         ]
       },
       "condition": {
-        "type": "context_gate",
-        "check": "inactivity_duration_weeks >= long_inactivity_threshold_weeks AND plan_follows_long_inactivity_track == false",
+        "type": "long_inactivity_track_compliance",
+        "check": "compare first-phase numeric fields against Table 9 week-1 thresholds (L1-RTT-0002a/b/c/d)",
         "parameters": {
           "long_inactivity_threshold_weeks": 4
         }
@@ -43,18 +43,25 @@
       "action": "reject",
       "reason_template": {
         "flagged": {
-          "en": "The input indicates a return to training after a prolonged period of inactivity ({observed_value} weeks). CSCCa/NSCA guidelines require this population to follow the dedicated 'return from long inactivity' track: a 4-week 50/30/20/10% volume reduction combined with a gradual 5-week weight-training progression (Table 9), not a standard or moderately-reduced program. The plan does not indicate this track was applied.",
-          "pt": "A entrada indica um regresso ao treino após um longo período de inatividade ({observed_value} semanas). As diretrizes CSCCa/NSCA exigem que esta população siga a via dedicada de 'regresso após inatividade prolongada': uma redução de volume de 50/30/20/10% ao longo de 4 semanas combinada com uma progressão gradual de 5 semanas no treino de força (Tabela 9), e não um programa padrão ou moderadamente reduzido. O plano não indica que esta via foi aplicada.",
-          "ja": "入力情報から、長期間の休養明けであることが示されています({observed_value}週間)。CSCCa/NSCAガイドラインでは、この対象者には「長期休養からの復帰」専用トラック(4週間の50/30/20/10%負荷削減と、5週間かけた段階的な負荷復帰(Table 9)の組み合わせ)を適用すべきとされており、通常または中程度の削減のみのプログラムでは不十分です。提示されたプランには、このトラックが適用された形跡がありません。"
+          "en": "The input indicates a return to training after a prolonged period of inactivity ({observed_value} weeks). Comparing the plan's stated first-phase training parameters against Table 9 week-1 bounds shows the dedicated long-inactivity return track was not followed (violations: {table9_week1_violations}).",
+          "pt": "A entrada indica um regresso ao treino após um longo período de inatividade ({observed_value} semanas). Comparando os parâmetros da primeira fase do plano com os limites da semana 1 da Tabela 9, a via dedicada de regresso após inatividade prolongada não foi seguida (violações: {table9_week1_violations}).",
+          "ja": "入力情報から、長期間の休養明けであることが示されています({observed_value}週間)。プランの初期フェーズの数値をTable 9の1週目閾値と比較すると、長期休養トラックは守られていません(違反項目: {table9_week1_violations})。"
+        },
+        "insufficient_data": {
+          "en": "The input indicates a prolonged inactivity period ({observed_value} weeks), but the plan does not provide enough numeric detail (frequency, sets, intensity, and/or rest) to verify Table 9 week-1 return-to-training compliance. This is flagged for review rather than treated as a pass.",
+          "pt": "A entrada indica um período prolongado de inatividade ({observed_value} semanas), mas o plano não fornece detalhe numérico suficiente (frequência, séries, intensidade e/ou descanso) para verificar a conformidade com a semana 1 da Tabela 9. Isto é assinalado para revisão, e não tratado como aprovação.",
+          "ja": "長期の休養期間({observed_value}週間)が示されていますが、Table 9の1週目適合を判定するのに必要な数値(頻度・セット・強度・休息のいずれか)が不足しています。pass扱いにはせず、確認が必要なcautionとして扱います。"
         },
         "pass": {
-          "en": "For this long-inactivity context, the plan follows the dedicated 'return from long inactivity' track (a 4-week progressive volume reduction combined with the gradual weight-training progression in Table 9), consistent with CSCCa/NSCA guidance."
+          "en": "For this long-inactivity context ({observed_value} weeks), the plan's reported first-phase parameters stay within Table 9 week-1 bounds, consistent with the dedicated return-from-long-inactivity track.",
+          "pt": "Neste contexto de inatividade prolongada ({observed_value} semanas), os parâmetros da primeira fase do plano permanecem dentro dos limites da semana 1 da Tabela 9, consistente com a via dedicada de regresso.",
+          "ja": "この長期休養明けの文脈({observed_value}週間)では、プランの初期フェーズ数値がTable 9の1週目範囲内に収まっており、長期休養トラックに沿っています。"
         }
       },
       "severity": "high",
       "verification_status": "verified",
-      "version": "1.0",
-      "last_reviewed": "2026-08-01"
+      "version": "2.0",
+      "last_reviewed": "2026-08-04"
     },
     {
       "rule_id": "L1-RTT-0002a",
@@ -640,6 +647,186 @@
         }
       },
       "severity": "medium",
+      "verification_status": "verified",
+      "version": "1.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-ECSS-0002",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "ECSS-ACSM-2013",
+        "section": "Prevention / Rest and sleep"
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "rest_days_per_week == 0",
+        "parameters": {
+          "min_rest_days_per_week": 1
+        }
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "flagged": {
+          "en": "Guidelines recommend athletes have at least one full passive rest day per week; the absence of a recovery day is linked to the onset of overreaching and underrecovery, especially during periods of intensified training. This plan schedules {observed_value} full rest days per week.",
+          "pt": "As diretrizes recomendam que os atletas tenham pelo menos um dia de descanso passivo completo por semana; a ausência de um dia de recuperação está associada ao início de overreaching e recuperação insuficiente, especialmente durante períodos de treino intensificado. Este plano prevê {observed_value} dias de descanso completo por semana.",
+          "ja": "ガイドラインでは、アスリートは少なくとも週1回の完全な休養日を取ることが推奨されています。回復日がないことは、特にトレーニング強度が高まる時期のオーバーリーチングや回復不足の発生と関連しています。このプランの完全休養日は週{observed_value}日です。"
+        },
+        "pass": {
+          "en": "The plan includes at least one full rest day per week, consistent with guidance linking the absence of recovery days to overreaching and underrecovery."
+        }
+      },
+      "severity": "medium",
+      "verification_status": "verified",
+      "version": "1.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0008",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "context_track_selection",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 2, p.11 (Returning athletes or new sport coach row)",
+        "note": "Distinct from L1-RTT-0001 (long inactivity, >=4 weeks working threshold). This covers the shorter 2-4 week break, governed by the FIT rule (Table 8) rather than Table 9."
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "context_gate",
+        "check": "inactivity_duration_weeks >= min_weeks AND inactivity_duration_weeks < max_weeks AND plan_follows_moderate_return_track == false",
+        "parameters": {
+          "min_weeks": 2,
+          "max_weeks": 4
+        }
+      },
+      "action": "reject",
+      "reason_template": {
+        "flagged": {
+          "en": "The input indicates a return to training after a break of {observed_value} weeks. CSCCa/NSCA guidelines place this in the 'returning athlete' track, governed by the FIT rule for the first 2 weeks (frequency caps, W:R ratio). The plan does not indicate this track was applied.",
+          "pt": "A entrada indica um regresso ao treino após uma pausa de {observed_value} semanas. As diretrizes CSCCa/NSCA colocam isto na via de 'atleta em regresso', regida pela regra FIT nas primeiras 2 semanas. O plano não indica que esta via foi aplicada.",
+          "ja": "入力情報から、{observed_value}週間のブランク明けであることが示されています。CSCCa/NSCAガイドラインでは、これは最初の2週間をFIT rule(頻度上限・運動:休息比)で管理する「復帰選手」トラックに該当します。プランにはこのトラックが適用された形跡がありません。"
+        },
+        "pass": {
+          "en": "For this {observed_value}-week break context, the plan follows the 'returning athlete' track governed by the FIT rule, consistent with CSCCa/NSCA guidance."
+        }
+      },
+      "severity": "medium",
+      "verification_status": "verified",
+      "version": "1.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0009",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 8 (FIT rule)"
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "moderate_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "weeks_since_return == 1 AND sessions_per_week > 3",
+        "parameters": {
+          "max_sessions_week1": 3
+        }
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "flagged": {
+          "en": "The FIT rule caps training frequency at 3 sessions/week during the first week of the returning-athlete track. The plan's value ({observed_value}) exceeds this.",
+          "pt": "A regra FIT limita a frequência de treino a 3 sessões/semana durante a primeira semana da via de atleta em regresso. O valor do plano ({observed_value}) excede este limite.",
+          "ja": "FIT ruleでは、復帰選手トラックの1週目は頻度上限を週3回としています。プランの設定値({observed_value})はこれを超えています。"
+        },
+        "pass": {
+          "en": "Training frequency in week 1 ({observed_value} sessions/week) stays within the FIT rule's 3-session/week cap for the returning-athlete track."
+        }
+      },
+      "severity": "low",
+      "verification_status": "verified",
+      "version": "1.0",
+      "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0010",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "CSCCa-NSCA-2019",
+        "section": "Table 8 (FIT rule)"
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus",
+          "moderate_inactivity"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "weeks_since_return == 2 AND sessions_per_week > 4",
+        "parameters": {
+          "max_sessions_week2": 4
+        }
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "flagged": {
+          "en": "The FIT rule caps training frequency at 4 sessions/week during the second week of the returning-athlete track. The plan's value ({observed_value}) exceeds this.",
+          "pt": "A regra FIT limita a frequência de treino a 4 sessões/semana durante a segunda semana da via de atleta em regresso. O valor do plano ({observed_value}) excede este limite.",
+          "ja": "FIT ruleでは、復帰選手トラックの2週目は頻度上限を週4回としています。プランの設定値({observed_value})はこれを超えています。"
+        },
+        "pass": {
+          "en": "Training frequency in week 2 ({observed_value} sessions/week) stays within the FIT rule's 4-session/week cap for the returning-athlete track."
+        }
+      },
+      "severity": "low",
       "verification_status": "verified",
       "version": "1.0",
       "last_reviewed": "2026-08-01"

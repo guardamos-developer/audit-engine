@@ -1,0 +1,17 @@
+{
+  "user_prompt": "Coming back after about 4.5 months off due to a medical issue (I've been cleared to train again). My physical therapist set me up with a program: 2 sessions per week, 2 sets per exercise, staying under 70% of my max, resting 6 minutes between sets.",
+  "ai_response": "That PT-guided restart looks appropriately conservative for a multi-month layoff. Stick with the 2×/week, 2-set, <70% 1RM, 6-minute rest prescription for the first phase unless your clinician adjusts it.",
+  "expected_plan": {
+    "target_population": "healthy_adult_18plus",
+    "goal": "general",
+    "inactivity_duration_weeks": 18,
+    "weeks_since_return": 1,
+    "sessions_per_week": 2,
+    "sets_per_exercise": 2,
+    "intensity_percent_1RM": 70,
+    "rest_minutes": 6
+  },
+  "expected_track_compliance": "followed",
+  "inactivity_duration_weeks_range": [18, 20],
+  "source_note": "Synthetic independent case for Table 9 week-1 track-compliance generalization (pass)."
+}

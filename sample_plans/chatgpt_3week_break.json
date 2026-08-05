@@ -1,0 +1,10 @@
+{
+  "target_population": "healthy_adult_18plus",
+  "goal": "general",
+  "inactivity_duration_weeks": 3,
+  "plan_follows_moderate_return_track": false,
+  "weeks_since_return": 1,
+  "sessions_per_week": 5,
+  "sets_per_exercise": 4,
+  "program_mandates_training_to_failure": false
+}

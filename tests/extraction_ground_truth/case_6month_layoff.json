@@ -1,0 +1,24 @@
+{
+  "user_prompt": "I haven't worked out in six months and want to rebuild my muscle as fast as possible. Give me a serious training plan.",
+  "ai_response": "After six months off, you have a big advantage: muscle memory. People who previously built muscle often regain it substantially faster than it took to build it the first time, provided they train consistently, eat enough protein, and recover well.\nThe biggest mistake is trying to train like you're still at your previous level. The fastest route back is to build momentum for 2–3 weeks, then push hard.\nPhase 1: Rebuild (Weeks 1–2)\nTrain 4 days per week.\nDay 1 – Upper (Strength Focus)\n\n* Bench press: 4 × 5–6\n* Weighted pull-ups or lat pulldowns: 4 × 6–8\n* Overhead press: 3 × 6–8\n* Chest-supported row: 3 × 8\n* Incline dumbbell press: 2 × 10\n* Lateral raises: 3 × 15\n* Triceps pressdowns: 3 × 12\n* Dumbbell curls: 3 × 12\n\nDay 2 – Lower\n\n* Back squat: 4 × 5–6\n* Romanian deadlift: 3 × 8\n* Walking lunges: 3 × 10 each leg\n* Leg curl: 3 × 12\n* Standing calf raises: 4 × 12–15\n* Hanging leg raises: 3 × 12\n\nRest one day.\nDay 4 – Upper (Hypertrophy)\n\n* Incline bench: 3 × 8–10\n* Seated cable row: 3 × 10\n* Dumbbell shoulder press: 3 × 10\n* Machine chest press: 3 × 12\n* Lat pulldown: 3 × 12\n* Lateral raises: 4 × 15–20\n* Face pulls: 3 × 15\n* Biceps: 3 × 12\n* Triceps: 3 × 12\n\nDay 5 – Lower\n\n* Front squat or hack squat: 3 × 8\n* Leg press: 3 × 12\n* Romanian deadlift: 3 × 10\n* Leg extension: 3 × 15\n* Leg curl: 3 × 15\n* Calves: 4 × 15\n* Plank: 3 sets\n\nKeep 2–3 reps in reserve (RIR) on nearly every set during these first two weeks.\nPhase 2: Growth (Weeks 3–12)\nIncrease intensity.\nAim for:\n\n* Compound lifts: 3–5 working sets\n* Isolation exercises: 2–4 sets\n* 6–15 reps for most exercises\n* Last set within 0–1 RIR\n* Around 12–18 hard sets per muscle group per week\n\nEvery week:\n\n* Add 2.5–5 kg if you hit the top of the rep range with good form, or\n* Add 1–2 reps before increasing weight.\n\nNutrition\nFor rebuilding muscle quickly:\nProtein\n\n* 1.6–2.2 g/kg body weight daily\n\nExample:\n\n* 80 kg = 130–175 g protein\n\nCalories\nIf you're relatively lean:\n\n* 200–300 calorie surplus\n\nIf you've gained noticeable fat:\n\n* Eat around maintenance calories. Thanks to muscle memory, many people can regain muscle while maintaining weight.\n\nCarbs\nDon't fear carbohydrates.\nAim for:\n\n* 3–6 g/kg/day\n\nMost should be around your workouts.\nFat\n\n* 0.6–1.0 g/kg/day\n\nSupplements\nThe evidence-based basics are:\n\n* Creatine monohydrate: 3–5 g daily\n* Whey protein if it helps you meet protein targets\n* Caffeine (optional): 100–300 mg before training if you tolerate it\n* Vitamin D only if you're deficient or advised to take it\n\nCardio\nKeep it moderate.\n\n* 2–3 sessions\n* 20–30 minutes\n* Easy cycling, incline walking, or jogging\n\nEnough for cardiovascular health without interfering with recovery.\nRecovery\nTreat recovery like part of the program.\n\n* Sleep 7.5–9 hours\n* Stay hydrated\n* Train each muscle about twice per week\n* Rest 2–3 minutes between heavy compound sets\n* Rest 60–90 seconds for isolation exercises\n\nProgress targets\nIf you're consistent, it's realistic to see:\n\n* Weeks 1–2: Strength increases rapidly as your nervous system readapts.\n* Weeks 3–6: Noticeable improvements in muscle fullness and size due to muscle memory.\n* Weeks 8–12: Many lifters regain much of the muscle they lost, assuming nutrition, sleep, and training stay on track.\n\nThe key is to avoid rushing into maximal weights in the first couple of weeks. Building back with high-quality training and progressive overload is typically faster—and safer—than trying to pick up where you left off.\n",
+  "expected_plan": {
+    "target_population": "healthy_adult_18plus",
+    "goal": "hypertrophy",
+    "inactivity_duration_weeks": 26,
+    "weeks_since_return": 1,
+    "sessions_per_week": 4,
+    "sets_per_exercise": 4,
+    "plan_week_parameters": {
+      "1": {
+        "sets": 4,
+        "reps": "5-6",
+        "intensity_percent_1RM": null,
+        "rest_minutes": null,
+        "frequency_days_per_week": 4
+      }
+    },
+    "program_mandates_training_to_failure": false,
+    "weekly_sets_per_muscle_group": 15
+  },
+  "source_note": "user_prompt and ai_response are the original conversation-log text (verbatim)."
+}
