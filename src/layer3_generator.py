@@ -29,7 +29,7 @@ def generate_layer3_response(
     if not facts:
         return ""
 
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
     if not api_key:
         raise EnvironmentError(
             "OPENAI_API_KEY is not set. Copy .env.example to .env and set the key."

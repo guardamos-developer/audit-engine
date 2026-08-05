@@ -50,6 +50,15 @@ def _zero_rest_pipeline_payload() -> dict:
     }
 
 
+def test_health_reports_openai_key_diagnostics(client: TestClient):
+    response = client.get("/health")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert "openai_api_key_set" in body
+    assert "openai_api_key_starts_with_sk" in body
+
+
 def test_audit_requires_api_key(client: TestClient):
     response = client.post(
         "/audit",

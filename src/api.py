@@ -32,6 +32,25 @@ def _billing_validate_url() -> str:
     )
 
 
+def _openai_api_key_status() -> dict[str, Any]:
+    """Diagnostics for OPENAI_API_KEY without revealing the secret value."""
+    raw = os.environ.get("OPENAI_API_KEY")
+    if raw is None:
+        return {
+            "openai_api_key_set": False,
+            "openai_api_key_nonempty_after_strip": False,
+            "openai_api_key_starts_with_sk": False,
+            "openai_api_key_had_leading_or_trailing_whitespace": False,
+        }
+    stripped = raw.strip()
+    return {
+        "openai_api_key_set": True,
+        "openai_api_key_nonempty_after_strip": bool(stripped),
+        "openai_api_key_starts_with_sk": stripped.startswith("sk-"),
+        "openai_api_key_had_leading_or_trailing_whitespace": raw != stripped,
+    }
+
+
 def validate_api_key_via_billing(api_key: str) -> bool:
     """Ask billing whether ``api_key`` is active (HTTP, no local key DB)."""
     if not api_key:
@@ -57,8 +76,16 @@ class AuditRequest(BaseModel):
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "guardamos-audit-engine"}
+def health() -> dict[str, Any]:
+    return {
+        "status": "ok",
+        "service": "guardamos-audit-engine",
+        **_openai_api_key_status(),
+        "billing_validate_url_configured": bool(
+            os.environ.get("BILLING_VALIDATE_URL")
+            or os.environ.get("GUARDAMOS_BILLING_VALIDATE_URL")
+        ),
+    }
 
 
 @app.post("/audit")
@@ -73,9 +100,29 @@ def audit(
     if not x_api_key or not validate_api_key_via_billing(x_api_key):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
-    return run_raw_text_pipeline(
-        body.user_prompt,
-        body.ai_response,
-        lang=body.lang,
-        skip_layer3=body.skip_layer3,
-    )
+    try:
+        return run_raw_text_pipeline(
+            body.user_prompt,
+            body.ai_response,
+            lang=body.lang,
+            skip_layer3=body.skip_layer3,
+        )
+    except OSError as exc:
+        # Includes EnvironmentError when OPENAI_API_KEY is missing.
+        raise HTTPException(status_code=503, detail=str(exc)) from None
+    except Exception as exc:
+        # Surface OpenAI auth / API failures instead of a bare 500.
+        name = type(exc).__name__
+        if name in {
+            "AuthenticationError",
+            "PermissionDeniedError",
+            "RateLimitError",
+            "APIConnectionError",
+            "APIStatusError",
+            "APIError",
+        } or "openai" in type(exc).__module__.lower():
+            raise HTTPException(
+                status_code=503,
+                detail=f"OpenAI request failed ({name}): {exc}",
+            ) from None
+        raise

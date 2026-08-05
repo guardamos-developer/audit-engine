@@ -413,7 +413,7 @@ def _call_structured_extraction(
     *,
     client: Any = None,
 ) -> dict[str, Any]:
-    api_key = os.environ.get("OPENAI_API_KEY")
+    api_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
     if client is None:
         if not api_key:
             raise EnvironmentError(
