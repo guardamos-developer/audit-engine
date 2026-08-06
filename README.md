@@ -23,6 +23,38 @@ guideline, not a black box. That lets the AI teams we work with focus
 their own effort on what they do best (the generative, probabilistic
 side of their product) instead of building this layer themselves.
 
+Most users should start with the hosted API below. Prefer to run this
+yourself instead? See [Self-hosting](#self-hosting-advanced).
+
+## Using the hosted API
+
+If you're calling the hosted API from your own backend (rather than
+self-hosting), the typical integration point is right after your own AI
+generates a plan and before you show it to your user:
+
+```python
+import os
+import requests
+
+GUARDAMOS_API_KEY = os.environ["GUARDAMOS_API_KEY"]
+
+def audit_plan(user_prompt: str, ai_response: str) -> dict:
+    response = requests.post(
+        "https://guardamos-audit-engine.onrender.com/audit",
+        headers={"X-API-Key": GUARDAMOS_API_KEY},
+        json={"user_prompt": user_prompt, "ai_response": ai_response},
+        timeout=10,
+    )
+    response.raise_for_status()
+    return response.json()
+```
+
+See [`examples/integration_example.py`](examples/integration_example.py)
+for a complete, runnable version, including error handling for when the
+audit service is slow or unreachable — this call is not meant to block
+your own request path indefinitely. See also [Status](#status) below on
+intended use.
+
 ## Example
 
 Prompted a general-purpose AI assistant with: *"I haven't worked out in six months and want to rebuild muscle as fast as possible. Give me a serious training plan."* The response went straight into a high-intensity 4-day/week program in week one — no adjustment for the fact that returning after an extended layoff carries documented injury risk.
@@ -76,7 +108,22 @@ Three layers:
 
 `pending_source_check` means a rule was extracted with LLM assistance and hasn't yet been manually cross-checked against the source PDF line-by-line. Treat rule content as a draft until its `verification_status` field is updated to `verified`.
 
-## Running it
+## A note on input format
+
+The `--raw-text` mode expects both the original user prompt and the AI's
+response, not the response alone. Population-relevant context (injury,
+pregnancy, age, recent surgery) usually appears in the prompt, not in the
+generated plan itself. Submitting the response without the prompt risks
+missing that context entirely — the current design defaults to *not*
+excluding a population when this information is simply absent, which is
+the safer failure mode, but it is not a substitute for providing the
+context in the first place. Always send both.
+
+## Self-hosting (advanced)
+
+This section is for running the audit engine on your own infrastructure
+with your own OpenAI API key — most users won't need this, see
+[Using the hosted API](#using-the-hosted-api) instead.
 
 ```bash
 git clone https://github.com/guardamos-developer/audit-engine.git
@@ -88,46 +135,6 @@ cp .env.example .env  # add your OPENAI_API_KEY
 python main.py sample_plans/chatgpt_6month_layoff.json --lang en
 python -m pytest tests/ -v
 ```
-
-## Integrating the hosted API
-
-If you're calling the hosted API from your own backend (rather than
-self-hosting), the typical integration point is right after your own AI
-generates a plan and before you show it to your user:
-
-```python
-import os
-import requests
-
-GUARDAMOS_API_KEY = os.environ["GUARDAMOS_API_KEY"]
-
-def audit_plan(user_prompt: str, ai_response: str) -> dict:
-    response = requests.post(
-        "https://guardamos-audit-engine.onrender.com/audit",
-        headers={"X-API-Key": GUARDAMOS_API_KEY},
-        json={"user_prompt": user_prompt, "ai_response": ai_response},
-        timeout=10,
-    )
-    response.raise_for_status()
-    return response.json()
-```
-
-See [`examples/integration_example.py`](examples/integration_example.py)
-for a complete, runnable version, including error handling for when the
-audit service is slow or unreachable — this call is not meant to block
-your own request path indefinitely. See also [Status](#status) below on
-intended use.
-
-## A note on input format
-
-The `--raw-text` mode expects both the original user prompt and the AI's
-response, not the response alone. Population-relevant context (injury,
-pregnancy, age, recent surgery) usually appears in the prompt, not in the
-generated plan itself. Submitting the response without the prompt risks
-missing that context entirely — the current design defaults to *not*
-excluding a population when this information is simply absent, which is
-the safer failure mode, but it is not a substitute for providing the
-context in the first place. Always send both.
 
 ## Status
 
