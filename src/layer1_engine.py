@@ -54,6 +54,8 @@ ACTIVE_RULE_IDS = frozenset(
         "L1-RTT-0004",
         "L1-RTT-0005",
         "L1-RTT-0006",
+        # Relative load/volume caution (qualitative signal; not numeric compliance)
+        "L1-RTT-0011",
     }
 )
 
@@ -619,6 +621,23 @@ def evaluate_against_table9_week1(plan: dict) -> list[str]:
     return violations
 
 
+def _all_table9_absolute_fields_null(plan: dict) -> bool:
+    """True when no Table 9 week-1 absolute metric is present on the plan.
+
+    Uses the same field set / aliases as ``evaluate_long_inactivity_track_compliance``.
+    Relative language alone must not populate these fields.
+    """
+    for field in _TABLE9_WEEK1_METRIC_FIELDS:
+        if field == "sessions_per_week":
+            if plan.get("sessions_per_week") is not None:
+                return False
+            if _resolve_plan_value(plan, "frequency_days_per_week") is not None:
+                return False
+        elif _resolve_plan_value(plan, field) is not None:
+            return False
+    return True
+
+
 def evaluate_long_inactivity_track_compliance(plan: dict) -> str:
     """Derive long-inactivity track compliance from numeric fields.
 
@@ -686,6 +705,30 @@ def _evaluate_long_inactivity_track_compliance(
     return False, matched_parameters
 
 
+def _evaluate_relative_load_reduction_signal(
+    condition: dict, plan: dict
+) -> tuple[bool, dict]:
+    """Match when relative load caution is present and absolute Table 9 metrics are not.
+
+    This is a qualitative signal only — it never converts relative language into
+    absolute %1RM / set counts. A match yields ``flag_caution`` (not a numeric
+    compliance verdict).
+    """
+    uses = plan.get("uses_relative_load_reduction")
+    quote = plan.get("relative_reduction_evidence_quote")
+    if not isinstance(quote, str) or not quote.strip():
+        quote = ""
+    matched_parameters: dict[str, Any] = {
+        "uses_relative_load_reduction": uses,
+        "relative_reduction_evidence_quote": quote,
+    }
+    if uses is not True:
+        return False, matched_parameters
+    if not _all_table9_absolute_fields_null(plan):
+        return False, matched_parameters
+    return True, matched_parameters
+
+
 def _evaluate_context_gate(condition: dict, plan: dict) -> tuple[bool, dict]:
     """Moderate return track gate (L1-RTT-0008).
 
@@ -738,6 +781,8 @@ def evaluate_condition(condition: dict, plan: dict, rule: dict) -> tuple[bool, d
         return _evaluate_context_gate(condition, plan)
     if cond_type == "long_inactivity_track_compliance":
         return _evaluate_long_inactivity_track_compliance(condition, plan)
+    if cond_type == "relative_load_reduction_signal":
+        return _evaluate_relative_load_reduction_signal(condition, plan)
     raise ValueError(f"Unknown condition type: {cond_type!r}")
 
 
@@ -902,6 +947,10 @@ def _condition_is_evaluable(condition: dict, plan: dict, rule: dict) -> bool:
         status = evaluate_long_inactivity_track_compliance(plan)
         return status in {"followed", "violated"}
 
+    if cond_type == "relative_load_reduction_signal":
+        # Need an explicit boolean; null means unknown → do not match or pass-fact.
+        return plan.get("uses_relative_load_reduction") is not None
+
     return False
 
 
@@ -936,6 +985,10 @@ def _build_pass_parameters(rule: dict, plan: dict) -> dict | None:
         out["observed_value"] = weeks
         out["track_compliance"] = status
         return out
+
+    if cond_type == "relative_load_reduction_signal":
+        # Qualitative caution only — never a confirmed numeric pass fact.
+        return None
 
     if cond_type == "population_check":
         out["target_population"] = plan.get("target_population")

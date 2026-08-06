@@ -96,6 +96,9 @@ _PLAN_FIELD_SPECS: dict[str, dict[str, Any]] = {
     "plan_recommends_continuing_programmed_progression_without_reevaluation": {
         "json_type": ["boolean", "null"]
     },
+    # Relative (non-absolute) load/volume caution — never convert to absolute %1RM.
+    "uses_relative_load_reduction": {"json_type": ["boolean", "null"]},
+    "relative_reduction_evidence_quote": {"json_type": ["string", "null"]},
 }
 
 # Highest-priority fields for out-of-scope detection.
@@ -121,7 +124,8 @@ Rules (mandatory):
    textual evidence.
 3. Prefer numbers stated explicitly (e.g. "4 sessions per week", "2 sets").
    Do not invent absolute values from vague relative language like "go lighter"
-   or "reduce volume".
+   or "reduce volume". Capture that language via uses_relative_load_reduction
+   (item 17) instead of converting it into a guessed absolute number.
 4. Contextual signals (injury, pregnancy, age under 18, post-surgical status,
    long inactivity) often appear in the user_prompt — read both texts.
 5. For boolean exclusion flags (injury_present, pregnant, post_surgical,
@@ -184,6 +188,20 @@ Rules (mandatory):
      meta_instruction_evidence to null.
    - Do NOT invent plan field values from meta-instructions; plan fields must
      still come only from plan-describing evidence quotes.
+17. uses_relative_load_reduction / relative_reduction_evidence_quote:
+   - If the response reduces load, volume, or intensity using relative /
+     comparative language (e.g. "reduce by X%", "use about Y% of your usual
+     weight", "lighter than normal", "start conservative", "ease back in",
+     "drop volume to 70-80% of usual") rather than stating an absolute number
+     such as "%1RM" or a concrete load in kg/lb, set
+     uses_relative_load_reduction to true and put the exact phrase in both
+     uses_relative_load_reduction.evidence_quote and
+     relative_reduction_evidence_quote.value (evidence_quote may repeat it).
+   - Do not attempt to convert this into an absolute number — there is no
+     baseline value to convert from.
+   - If no such relative reduction language is present, set
+     uses_relative_load_reduction to false or null (null when unclear) and
+     relative_reduction_evidence_quote to null.
 """
 
 
@@ -254,6 +272,20 @@ def _materialize_plan_and_evidence(
 
         plan[name] = value
         evidence[name] = quote
+
+    # If relative reduction was flagged but the dedicated quote field was left
+    # null, reuse the boolean field's evidence quote (same supporting phrase).
+    if (
+        plan.get("uses_relative_load_reduction") is True
+        and plan.get("relative_reduction_evidence_quote") is None
+        and evidence.get("uses_relative_load_reduction")
+    ):
+        plan["relative_reduction_evidence_quote"] = evidence[
+            "uses_relative_load_reduction"
+        ]
+        evidence["relative_reduction_evidence_quote"] = evidence[
+            "uses_relative_load_reduction"
+        ]
 
     return plan, evidence
 

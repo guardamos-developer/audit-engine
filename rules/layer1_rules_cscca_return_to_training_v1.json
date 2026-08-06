@@ -830,6 +830,45 @@
       "verification_status": "verified",
       "version": "1.0",
       "last_reviewed": "2026-08-01"
+    },
+    {
+      "rule_id": "L1-RTT-0011",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "qualitative_caution_signal",
+      "source": {
+        "document": "N/A",
+        "note": "This rule does not verify numeric guideline compliance. It records that the plan expressed load/volume caution in relative terms, which the current schema cannot numerically compare to Table 9 thresholds without a baseline value. Motivating case: long-inactivity (and similar) returns where absolute Table 9 fields are absent; the same qualitative signal also covers moderate-return / acute-soreness replies that only use relative language."
+      },
+      "applicability": {
+        "population": [
+          "healthy_adult_18plus"
+        ],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
+      },
+      "condition": {
+        "type": "relative_load_reduction_signal",
+        "check": "uses_relative_load_reduction == true AND all absolute Table 9 fields are null",
+        "parameters": {}
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "flagged": {
+          "en": "This plan reduces load/volume using relative language ({relative_reduction_evidence_quote}) rather than absolute values. This is consistent with the caution CSCCa/NSCA guidance recommends when returning to training or managing recovery, but the exact values could not be numerically compared to guideline thresholds — treat as a qualitative signal, not confirmed numeric compliance.",
+          "pt": "Este plano reduz a carga/volume com linguagem relativa ({relative_reduction_evidence_quote}) em vez de valores absolutos. Isto é consistente com a cautela recomendada pelas orientações CSCCa/NSCA no regresso ao treino ou na gestão da recuperação, mas os valores exactos não puderam ser comparados numericamente aos limiares das diretrizes — trate como um sinal qualitativo, não como conformidade numérica confirmada.",
+          "ja": "このプランは絶対値ではなく相対的な表現({relative_reduction_evidence_quote})で負荷・ボリュームを下げています。休養明けや回復への配慮としてはCSCCa/NSCAが推奨する慎重さと整合しますが、ガイドライン閾値との数値比較はできないため、数値適合の確定ではなく定性的なシグナルとして扱ってください。"
+        }
+      },
+      "severity": "low",
+      "verification_status": "pending_source_check",
+      "version": "1.0",
+      "last_reviewed": "2026-08-06"
     }
   ]
 }
