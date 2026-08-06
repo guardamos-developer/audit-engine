@@ -85,6 +85,35 @@ python main.py sample_plans/chatgpt_6month_layoff.json --lang en
 python -m pytest tests/ -v
 ```
 
+## Integrating the hosted API
+
+If you're calling the hosted API from your own backend (rather than
+self-hosting), the typical integration point is right after your own AI
+generates a plan and before you show it to your user:
+
+```python
+import os
+import requests
+
+GUARDAMOS_API_KEY = os.environ["GUARDAMOS_API_KEY"]
+
+def audit_plan(user_prompt: str, ai_response: str) -> dict:
+    response = requests.post(
+        "https://guardamos-audit-engine.onrender.com/audit",
+        headers={"X-API-Key": GUARDAMOS_API_KEY},
+        json={"user_prompt": user_prompt, "ai_response": ai_response},
+        timeout=10,
+    )
+    response.raise_for_status()
+    return response.json()
+```
+
+See [`examples/integration_example.py`](examples/integration_example.py)
+for a complete, runnable version, including error handling for when the
+audit service is slow or unreachable — this call is not meant to block
+your own request path indefinitely. See also [Status](#status) below on
+intended use.
+
 ## A note on input format
 
 The `--raw-text` mode expects both the original user prompt and the AI's
