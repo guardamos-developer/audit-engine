@@ -9,19 +9,13 @@ _PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
 
 
 def _select_template(reason_template: dict, *, side: str, lang: str) -> str:
-    """Pick a language string from either nested flagged/pass or legacy flat form."""
+    """Pick a language string from ``reason_template[side][lang]``."""
     if not isinstance(reason_template, dict):
         return ""
 
-    # New shape: {"flagged": {"en": ...}, "pass": {"en": ...}}
     branch = reason_template.get(side)
     if isinstance(branch, dict):
         return branch.get(lang) or branch.get("en") or ""
-
-    # Legacy flat shape: {"en": ..., "pt": ..., "ja": ...}
-    # Only used for flagged-side rendering of older payloads.
-    if side == "flagged":
-        return reason_template.get(lang) or reason_template.get("en") or ""
     return ""
 
 

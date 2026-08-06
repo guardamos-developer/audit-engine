@@ -30,14 +30,6 @@ SAMPLE_PLAN = {
     "target_population": "healthy_adult_18plus",
     "goal": "strength",
     "sessions_per_week": 1,
-    # Optional: full passive rest days / week (excludes active recovery).
-    # Omit or null → L1-ECSS-0002 is skipped. 0 → flags missing rest day.
-    # "rest_days_per_week": 1,
-    # Long-inactivity track compliance is computed by Layer1 from numeric
-    # fields vs Table 9 week-1 thresholds (not LLM-extracted flags).
-    # Moderate return (2-to-<4 weeks) still uses plan_follows_moderate_return_track
-    # for L1-RTT-0008 until that gate is similarly derived.
-    # "plan_follows_moderate_return_track": True,
     "sets_per_exercise": 1,
     "load_percent_1RM": 50,
     "weekly_sets_per_muscle_group": 6,

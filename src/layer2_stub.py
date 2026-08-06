@@ -4,5 +4,9 @@ from __future__ import annotations
 
 
 def evaluate_layer2(plan: dict) -> list[dict]:
-    """Layer2は専門家暗黙知の抽出後に実装予定。現時点では常に空リストを返す。"""
+    """Return Layer2 matches.
+
+    Layer2 (expert tacit-knowledge checks) is not implemented yet.
+    Until then this always returns an empty list so Layer1 results stand alone.
+    """
     return []

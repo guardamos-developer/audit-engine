@@ -28,8 +28,8 @@ def _derive_verdict(
     """
     all_matches = layer1_matches + layer2_matches
     if all_matches:
-        # TODO: Layer2実装後はLayer2へのroutingを検討
-        # (action=route_to_layer2_or_reject を即rejectedにしているのはLayer2スタブ時点の安全側フォールバック)
+        # Until Layer2 exists, treat route_to_layer2_or_reject as reject
+        # (safe fallback while the Layer2 stub returns no matches).
         if any(m.get("action") in REJECT_ACTIONS for m in all_matches):
             return "rejected"
         return "flagged"

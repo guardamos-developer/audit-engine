@@ -465,8 +465,8 @@ def _evaluate_numeric_threshold(condition: dict, plan: dict) -> tuple[bool, dict
     """Evaluate numeric_threshold checks, including AND-composed clauses.
 
     Supports both:
-      - legacy: ``sessions_per_week < min_sessions_per_week``
-      - CSCCa: ``weeks_since_return == 1 AND sets_per_exercise > 2``
+      - simple: ``sessions_per_week < min_sessions_per_week``
+      - CSCCa compound: ``weeks_since_return == 1 AND sets_per_exercise > 2``
       - week-scoped aliases: ``work_rest_ratio_denominator < min_denominator_for_week``
     """
     check = condition.get("check", "")
@@ -1034,7 +1034,7 @@ def evaluate_layer1_detailed(
             }
 
     # Context gates first (early), but continue so week-specific RTT rules can also match.
-    # TODO: Layer2実装後は context_gate の即時reject vs routing を再検討
+    # After Layer2 exists, revisit whether context_gate should reject immediately or route.
     for rule in context_gates:
         if not _rule_in_evaluation_scope(rule, plan):
             continue

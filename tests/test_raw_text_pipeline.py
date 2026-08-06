@@ -40,7 +40,7 @@ def test_structured_corrected_plan_does_not_flag_ecss_0002():
 
 @pytest.mark.skipif(
     not CONV_PATH.exists(),
-    reason="sample_conversations/zero_rest_days_before.json not yet provided",
+    reason="sample_conversations/zero_rest_days_before.json is missing",
 )
 def test_raw_text_zero_rest_days_pipeline_flags_ecss_0002(capsys):
     """--raw-text: Extraction then Audit; L1-ECSS-0002 must fire."""
