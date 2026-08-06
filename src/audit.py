@@ -14,6 +14,63 @@ from .layer3_generator import generate_layer3_response
 REJECT_ACTIONS = frozenset({"route_to_layer2_or_reject", "reject"})
 
 
+def build_summary(
+    verdict: str,
+    matched_rules: list[str] | None = None,
+    checked_facts: list[dict] | None = None,
+    **context: Any,
+) -> str:
+    """Deterministically build a short, always-present summary string.
+
+    Assembled only from already-computed counts and ids (matched_rules,
+    checked_facts, optional injection/meta context). Does not call an LLM
+    and does not add claims beyond what those fields already state.
+    """
+    rules = list(matched_rules or [])
+    facts = list(checked_facts or [])
+
+    if verdict == "pass":
+        return f"{len(facts)} checks passed, 0 flagged."
+
+    if verdict in ("flagged", "rejected"):
+        ids = ", ".join(rules)
+        if ids:
+            return (
+                f"{len(rules)} issue(s) flagged: {ids}. "
+                "See explanations for details."
+            )
+        return f"{len(rules)} issue(s) flagged. See explanations for details."
+
+    if verdict == "insufficient_data":
+        return "Not enough information could be extracted to complete an audit."
+
+    if verdict == "flagged_for_review":
+        details: list[str] = []
+        injection_warning = context.get("injection_warning") or []
+        if injection_warning:
+            preview = ", ".join(str(p) for p in injection_warning[:3])
+            if len(injection_warning) > 3:
+                preview += ", ..."
+            details.append(f"injection pattern(s) detected ({preview})")
+        meta_detected = bool(context.get("possible_meta_instruction_detected"))
+        meta_evidence = context.get("meta_instruction_evidence")
+        if meta_detected or meta_evidence:
+            if isinstance(meta_evidence, str) and meta_evidence.strip():
+                short = " ".join(meta_evidence.strip().split())
+                if len(short) > 80:
+                    short = short[:77] + "..."
+                details.append(
+                    f"possible meta-instruction detected in input ({short})"
+                )
+            else:
+                details.append("possible meta-instruction detected in input")
+        if details:
+            return "Flagged for manual review: " + "; ".join(details) + "."
+        return "Flagged for manual review."
+
+    return f"Audit completed with verdict '{verdict}'."
+
+
 def _derive_verdict(
     layer1_matches: list[dict],
     layer2_matches: list[dict],
@@ -96,11 +153,14 @@ def run_audit(
             or None
         )
 
+    matched_rule_ids = [m["rule_id"] for m in all_matches]
+    pass_facts = checked_facts if verdict == "pass" else []
     return {
         "verdict": verdict,
-        "matched_rules": [m["rule_id"] for m in all_matches],
+        "summary": build_summary(verdict, matched_rule_ids, pass_facts),
+        "matched_rules": matched_rule_ids,
         "explanations": explanations,
-        "checked_facts": checked_facts if verdict == "pass" else [],
+        "checked_facts": pass_facts,
         "layer3_response": layer3_response,
         "ruleset_version": ruleset_version,
     }

@@ -31,6 +31,7 @@ Prompted a general-purpose AI assistant with: *"I haven't worked out in six mont
 $ python main.py sample_plans/chatgpt_6month_layoff.json --lang en --skip-layer3
 {
   "verdict": "rejected",
+  "summary": "3 issue(s) flagged: L1-RTT-0001, L1-RTT-0002a, L1-RTT-0002d. See explanations for details.",
   "matched_rules": ["L1-RTT-0001", "L1-RTT-0002a", "L1-RTT-0002d"],
   "explanations": [
     "The input indicates a return to training after a prolonged period of inactivity (26 weeks). CSCCa/NSCA guidelines require this population to follow the dedicated 'return from long inactivity' track...",
@@ -40,12 +41,15 @@ $ python main.py sample_plans/chatgpt_6month_layoff.json --lang en --skip-layer3
 }
 ```
 
+Every response includes a top-level `summary`: one or two sentences built deterministically from counts and rule ids (no LLM). It does not replace `explanations`, `checked_facts`, or `layer3_response`.
+
 A plan adjusted for the same context, in line with the relevant guideline's week-1 recommendations, passes. Rather than a silent pass, every applicable rule that was checked (not just the ones that failed) is returned as a `checked_facts` entry, and a short natural-language summary is generated from those facts alone — not from freely re-reading the plan:
 
 ```
 $ python main.py sample_plans/chatgpt_6month_layoff_corrected.json --lang en
 {
   "verdict": "pass",
+  "summary": "2 checks passed, 0 flagged.",
   "matched_rules": [],
   "checked_facts": [
     { "rule_id": "L1-RTT-0001", "text": "For this long-inactivity context, the plan follows the dedicated 'return from long inactivity' track..." },

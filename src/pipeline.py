@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .audit import run_audit
+from .audit import build_summary, run_audit
 from .injection_guard import detect_injection_patterns
 from .plan_extractor import extract_plan
 
@@ -53,6 +53,16 @@ def _apply_raw_text_verdict_overrides(
             )
         result["checked_facts"] = []
         result["layer3_response"] = None
+        result["summary"] = build_summary(
+            result["verdict"],
+            result.get("matched_rules") or [],
+            result.get("checked_facts") or [],
+            injection_warning=result.get("injection_warning"),
+            possible_meta_instruction_detected=result.get(
+                "possible_meta_instruction_detected"
+            ),
+            meta_instruction_evidence=result.get("meta_instruction_evidence"),
+        )
         return result
 
     missed_cue = any(
@@ -63,6 +73,11 @@ def _apply_raw_text_verdict_overrides(
         result["verdict"] = "insufficient_data"
         result["checked_facts"] = []
         result["layer3_response"] = None
+        result["summary"] = build_summary(
+            result["verdict"],
+            result.get("matched_rules") or [],
+            result.get("checked_facts") or [],
+        )
     return result
 
 
