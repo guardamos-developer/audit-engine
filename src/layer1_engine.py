@@ -184,17 +184,20 @@ def _plan_exclusion_tags(plan: dict) -> set[str]:
 def effective_target_population(plan: dict) -> str:
     """Return the mutually exclusive primary population class for this plan.
 
-    Routing rules (audit-side design, not source-stated cutoffs):
-      - age_years >= 65 → older_adult_healthy only
-        (provisional threshold; Fragala et al. study inclusion used 50+, but
-        that is research eligibility, not an audit cutoff — same convention as
-        the 4-week inactivity threshold in L1-RTT-0001)
-      - age_years < 65 → healthy_adult_18plus only
-      - age_years is null → default to healthy_adult_18plus so existing plans
-        without age continue under the ACSM general-adult ruleset; NSCA older-
-        adult rules do not apply until age is known
-    Explicit ``target_population`` is overridden when age_years is present so
-    age-based exclusivity cannot be bypassed by a stale tag.
+    Routing rules (audit-side design, not source-stated cutoffs), in order:
+      1. age_years present → numeric exclusivity
+         (>=65 → older_adult_healthy; otherwise → healthy_adult_18plus;
+         minors under 18 still use the general-adult gate with minor=True)
+      2. age_years null + stated_age_category == "older_adult"
+         → older_adult_healthy
+      3. age_years null + stated_age_category in {"minor", "adult"}
+         → healthy_adult_18plus (minor self-ID forces minor via
+         ``apply_deterministic_age_derived_flags``)
+      4. else explicit target_population if it is a primary class
+      5. else default healthy_adult_18plus
+
+    Numeric ``age_years`` always overrides ``stated_age_category`` /
+    ``target_population`` so exclusivity cannot be bypassed by a stale tag.
     """
     age = plan.get("age_years")
     if age is not None:
@@ -207,10 +210,49 @@ def effective_target_population(plan: dict) -> str:
                 return "older_adult_healthy"
             return "healthy_adult_18plus"
 
+    category = plan.get("stated_age_category")
+    if category == "older_adult":
+        return "older_adult_healthy"
+    if category in ("minor", "adult"):
+        return "healthy_adult_18plus"
+
     target = plan.get("target_population")
     if isinstance(target, str) and target in _PRIMARY_POPULATIONS:
         return target
     return "healthy_adult_18plus"
+
+
+def apply_deterministic_age_derived_flags(plan: dict) -> dict:
+    """Force exclusion flags that follow from age signals (Zone B).
+
+    When a definite numeric age is known, minor status must not depend on LLM
+    language interpretation: if age_years < 18, set ``minor=True`` regardless
+    of whether the extractor left minor as true, false, or null.
+
+    When age_years is null but ``stated_age_category == "minor"``, also force
+    ``minor=True`` so qualitative underage self-ID cannot skip the population
+    gate.
+
+    Symmetric with age >= 65 / stated_age_category older_adult routing in
+    ``effective_target_population``: these are deterministic gates, not
+    extraction guesses.
+    """
+    out = dict(plan)
+    age = out.get("age_years")
+    if age is not None:
+        try:
+            age_n = int(age)
+        except (TypeError, ValueError):
+            age_n = None
+        else:
+            # Age is a concrete number: minorhood is decided by comparison.
+            if age_n < 18:
+                out["minor"] = True
+            return out
+
+    if out.get("stated_age_category") == "minor":
+        out["minor"] = True
+    return out
 
 
 def _is_long_inactivity_context(plan: dict) -> bool:
@@ -492,11 +534,14 @@ def _evaluate_population_check(condition: dict, plan: dict, rule: dict) -> tuple
     positive = _positive_exclusion_flags(plan, excludes)
 
     out_of_scope = bool(positive)
+    triggered = sorted(positive)
     matched_parameters = {
         "target_population": target,
         "allowed_population": sorted(population),
         "excludes": sorted(excludes),
-        "positive_exclusion_flags": sorted(positive),
+        "positive_exclusion_flags": triggered,
+        # Comma-separated for reason_template ``{triggered_exclusions}``.
+        "triggered_exclusions": ", ".join(triggered) if triggered else "",
     }
     return out_of_scope, matched_parameters
 
@@ -1217,11 +1262,19 @@ def evaluate_layer1_detailed(
 
     # Normalize exclusive primary population from age when known.
     # Do not overwrite exclusion labels such as ``pregnant`` / ``minor`` that
-    # older fixtures store in ``target_population``.
+    # older fixtures store in ``target_population`` — unless age_years or
+    # stated_age_category drives exclusivity (rewrite primary class only).
     plan = dict(plan)
+    # Deterministic age→minor before gates: age_years < 18 or
+    # stated_age_category == "minor" forces minor=True.
+    plan = apply_deterministic_age_derived_flags(plan)
     raw_target = plan.get("target_population")
-    if plan.get("age_years") is not None or raw_target is None or (
-        isinstance(raw_target, str) and raw_target in _PRIMARY_POPULATIONS
+    category = plan.get("stated_age_category")
+    if (
+        plan.get("age_years") is not None
+        or category in ("minor", "older_adult", "adult")
+        or raw_target is None
+        or (isinstance(raw_target, str) and raw_target in _PRIMARY_POPULATIONS)
     ):
         plan["target_population"] = effective_target_population(plan)
 

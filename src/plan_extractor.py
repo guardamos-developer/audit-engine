@@ -18,6 +18,8 @@ from typing import Any
 
 GOAL_ENUM = ("strength", "hypertrophy", "power", "general")
 
+STATED_AGE_CATEGORY_ENUM = ("minor", "older_adult", "adult")
+
 EQUIPMENT_MODALITY_ENUM = (
     "free_weight_only",
     "machine_preferred_or_only",
@@ -27,6 +29,8 @@ EQUIPMENT_MODALITY_ENUM = (
 
 # Table 3 accommodation / modality fields: true (or a concrete enum) only on
 # clear explicit evidence. Ambiguous language → null (never guess true/false).
+# False positive here (marking an accommodation present when it is not) can
+# incorrectly PASS a safety caution — the dangerous failure mode.
 STRICT_ACCOMMODATION_FIELDS = frozenset(
     {
         "plan_offers_seated_position_option",
@@ -35,6 +39,27 @@ STRICT_ACCOMMODATION_FIELDS = frozenset(
         "spinal_flexion_or_twisting_caution_mentioned",
         "rom_restricted_training_mentioned",
         "equipment_modality",
+    }
+)
+
+# Population-gate / out-of-scope flags: opposite asymmetry from
+# STRICT_ACCOMMODATION_FIELDS. False negative (missing a real exclusion →
+# treating the case as a healthy in-scope adult) is the dangerous failure
+# mode; false positive (over-excluding) is mainly a UX cost. Prefer true on
+# suggestive language; do not require clinical/legal phrasing.
+LENIENT_EXCLUSION_FIELDS = frozenset(
+    {
+        "injury_present",
+        "pregnant",
+        "post_surgical",
+        "pain_present",
+        "minor",
+        "true_beginner_first_weeks",
+        "frailty_present",
+        "uncontrolled_hypertension",
+        "unstable_cardiovascular_disease",
+        "cardiovascular_disease_present",
+        "osteoporosis_present",
     }
 )
 
@@ -84,6 +109,11 @@ _PLAN_FIELD_SPECS: dict[str, dict[str, Any]] = {
     "reps": {"json_type": ["string", "null"]},
     "repetitions_per_set": {"json_type": ["integer", "null"]},
     "age_years": {"json_type": ["integer", "null"]},
+    # Qualitative age band when no numeric age_years is stated. Fixed enum only.
+    "stated_age_category": {
+        "json_type": ["string", "null"],
+        "enum": list(STATED_AGE_CATEGORY_ENUM),
+    },
     "inactivity_duration_weeks": {"json_type": ["integer", "null"]},
     "weeks_since_return": {"json_type": ["integer", "null"]},
     "program_mandates_training_to_failure": {"json_type": ["boolean", "null"]},
@@ -185,17 +215,65 @@ Rules (mandatory):
    (item 17) instead of converting it into a guessed absolute number.
 4. Contextual signals (injury, pregnancy, age under 18, post-surgical status,
    long inactivity) often appear in the user_prompt — read both texts.
-5. For boolean exclusion flags (injury_present, pregnant, post_surgical,
-   pain_present, minor, true_beginner_first_weeks, frailty_present,
-   uncontrolled_hypertension, unstable_cardiovascular_disease,
-   cardiovascular_disease_present, osteoporosis_present): set true only when
-   the text clearly states that condition; otherwise null (not false) unless
-   the text explicitly denies it.
+5. LENIENT exclusion / out-of-scope flags (opposite policy from item 19):
+   injury_present, pregnant, post_surgical, pain_present, minor,
+   true_beginner_first_weeks, frailty_present, uncontrolled_hypertension,
+   unstable_cardiovascular_disease, cardiovascular_disease_present,
+   osteoporosis_present.
+   - Prefer true when the text suggests the condition, even without clinical
+     or legal wording. Examples that SHOULD be true:
+     * minor: stated age under 18 ("I'm 15", "中学生", "14歳") OR qualitative
+       underage self-ID without a number ("I'm a minor", "I'm underage",
+       "未成年"). Age alone under 18 is enough. If age_years is 18 or older
+       (or the person is clearly an adult/older adult), minor must be false
+       or null — never true. Also set stated_age_category="minor" when the
+       cue is qualitative and age_years is null.
+     * frailty_present: general decline / low reserve without a named injury,
+       e.g. "少し体が弱っている", "体が弱ってきている",
+       "以前ほど体力がない", "疲れやすくなってきた", "frail",
+       "physically weak / declining reserve", "虚弱ぎみ". These map to
+       frailty_present, NOT to injury_present.
+     * injury_present / pain_present: a specific injury, body-part hurt, or
+       pain mention (old injury, sore knee/joint, "膝を痛めて", "古傷",
+       "怪我", post-sprain, etc.). Do NOT set injury_present from general
+       fitness decline, aging, "体力がない", "体が弱ってきた", or similar
+       frailty/aging language alone — that is frailty_present only.
+   - Keep frailty_present and injury_present distinct: aging / deconditioning
+     / "feeling weaker" → frailty_present; named injury or localized pain →
+     injury_present / pain_present. Distinguishing the two concepts is not the
+     same as affirming the other is absent: mentioning frailty alone must NOT
+     be used to set injury_present=false (or vice versa).
+   - False negative (missing a real exclusion) is worse than false positive
+     (over-excluding a healthy user). When unsure between true and null for
+     these fields, prefer true — except do not invent injury_present from
+     frailty-only wording, and do not set minor when age is clearly >= 18.
+   - For any exclusion flag (including injury_present): if the text has no
+     clear cue for that attribute at all, leave value null. Adjacent concepts
+     (e.g. frailty / aging language when judging injury_present) are not
+     grounds to assert false. Set false only when the text clearly denies
+     that attribute (e.g. "no injury", "怪我はない").
+   - false only when the text clearly denies the condition; otherwise if
+     there is no signal at all, null is acceptable.
 6. inactivity_duration_weeks: convert clear durations (e.g. "six months",
    "4.5 months") to an integer week estimate only when the text supports it;
    otherwise null.
 6b. age_years: integer age in years only when the text clearly states age
-   (e.g. "I am 68", "72-year-old"). Do not guess. Leave null when unknown.
+   (e.g. "I am 68", "72-year-old", "14歳"). Do not guess. Leave null when
+   unknown. When age_years < 18 is extracted, also set minor=true.
+6d. stated_age_category: qualitative age band when NO numeric age_years is
+   available. Value MUST be one of ["minor", "older_adult", "adult"] or null.
+   Free-text labels are forbidden.
+   - "minor": self-identification as underage without a number
+     (e.g. "I'm a minor", "I'm underage", "未成年").
+   - "older_adult": self-identification as elderly / senior / older adult
+     without a number (e.g. "I'm elderly", "I'm a senior citizen",
+     "I'm an older adult", "高齢者", "シニア").
+   - "adult": explicit adult self-ID without a number, only when clearly
+     neither minor nor older adult.
+   - null when there is no clear age-band self-report — do not infer from
+     goals, equipment, or "gentle plan" wording alone.
+   If age_years is filled, still leave stated_age_category null unless the
+   text also states a band independently (prefer age_years for routing).
 6c. repetitions_per_set: integer reps per set only when a clear single number
    or a tight range that resolves to one representative integer is stated
    (e.g. "10 reps" → 10). Prefer the midpoint of a narrow range only when both
@@ -278,10 +356,11 @@ Rules (mandatory):
     cognitive_impairment_present, diabetes_present, osteoporosis_present,
     joint_pain_or_limited_rom_present, poor_vision_or_balance_present,
     fall_risk_present, low_back_pain_present):
-   - true only when the text clearly states that condition/limitation;
-   - false only when the text clearly denies it;
-   - otherwise null.
-19. STRICT accommodation / modality fields (null-if-uncertain; asymmetric):
+   - For disease/limitation presence: follow the LENIENT policy in item 5
+     (prefer true on suggestive language). osteoporosis_present is in both
+     lists; use the lenient exclusion policy.
+19. STRICT accommodation / modality fields (null-if-uncertain; asymmetric —
+    opposite of item 5 LENIENT_EXCLUSION_FIELDS):
    plan_offers_seated_position_option,
    plan_uses_simple_exercise_selection_with_instruction,
    blood_glucose_monitoring_mentioned,
@@ -299,6 +378,7 @@ Rules (mandatory):
       "bands_or_bodyweight"]. Never invent a modality from weak cues.
    Rationale: a false positive (incorrect true / wrong modality) can make a
    safety caution incorrectly pass; a false negative resolves to human review.
+   Contrast with item 5: there, missing an exclusion is the dangerous miss.
 """
 
 
@@ -334,6 +414,42 @@ def build_extraction_json_schema() -> dict[str, Any]:
     }
 
 
+def _quotes_overlap(a: str | None, b: str | None) -> bool:
+    """True when quotes are equal or one is a substring of the other (casefold)."""
+    if not isinstance(a, str) or not isinstance(b, str):
+        return False
+    left = a.strip().casefold()
+    right = b.strip().casefold()
+    if not left or not right:
+        return False
+    return left == right or left in right or right in left
+
+
+def _null_false_flags_reusing_frailty_evidence(
+    plan: dict[str, Any],
+    evidence: dict[str, str | None],
+) -> None:
+    """Drop false injury/pain that reuse the frailty evidence quote.
+
+    Structural contradiction: the model asserted injury/pain is absent by
+    pointing at the same (or overlapping) quote used to support
+    frailty_present=true. Absence must be null unless clearly denied with
+    distinct wording — force those false values back to null.
+    """
+    if plan.get("frailty_present") is not True:
+        return
+    frailty_quote = evidence.get("frailty_present")
+    if not frailty_quote:
+        return
+    # Same structural failure mode as injury; apply to pain as well.
+    for flag in ("injury_present", "pain_present"):
+        if plan.get(flag) is not False:
+            continue
+        if _quotes_overlap(evidence.get(flag), frailty_quote):
+            plan[flag] = None
+            evidence[flag] = None
+
+
 def _materialize_plan_and_evidence(
     raw_fields: dict[str, Any],
 ) -> tuple[dict[str, Any], dict[str, str | None]]:
@@ -367,6 +483,11 @@ def _materialize_plan_and_evidence(
             evidence[name] = None
             continue
 
+        if name == "stated_age_category" and value not in STATED_AGE_CATEGORY_ENUM:
+            plan[name] = None
+            evidence[name] = None
+            continue
+
         if name == "equipment_modality" and value not in EQUIPMENT_MODALITY_ENUM:
             plan[name] = None
             evidence[name] = None
@@ -388,6 +509,8 @@ def _materialize_plan_and_evidence(
         evidence["relative_reduction_evidence_quote"] = evidence[
             "uses_relative_load_reduction"
         ]
+
+    _null_false_flags_reusing_frailty_evidence(plan, evidence)
 
     return plan, evidence
 

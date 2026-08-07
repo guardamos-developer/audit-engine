@@ -34,9 +34,9 @@
       "action": "route_to_layer2_or_reject",
       "reason_template": {
         "flagged": {
-          "en": "This ruleset is based on evidence for healthy adults aged 18 and over with no diagnosed disease. If the target population falls outside this scope (injury, post-surgical, pregnancy, minors, etc.), these rules do not apply and the case should be routed to expert judgment (Layer 2) or excluded.",
-          "pt": "Este conjunto de regras baseia-se em evidências para adultos saudáveis com 18 anos ou mais, sem doença diagnosticada. Se a população-alvo estiver fora deste âmbito (lesão, pós-cirúrgico, gravidez, menores, etc.), estas regras não se aplicam e o caso deve ser encaminhado para avaliação especializada (Layer 2) ou excluído.",
-          "ja": "本ルールセットは「18歳以上、既往疾患のない健康な成人」を対象としたエビデンスに基づいています。対象者がこの範囲外(怪我・術後・妊娠中・未成年等)の場合、このルールセットの適用外であり、専門家の判断(Layer2)または対象外として扱う必要があります。"
+          "en": "This ruleset is based on evidence for healthy adults aged 18 and over with no diagnosed disease. If the target population falls outside this scope (injury, post-surgical, pregnancy, minors, etc.), these rules do not apply, and more detailed review by domain experts is planned for a future release. Triggered exclusion(s): {triggered_exclusions}.",
+          "pt": "Este conjunto de regras baseia-se em evidências para adultos saudáveis com 18 anos ou mais, sem doença diagnosticada. Se a população-alvo estiver fora deste âmbito (lesão, pós-cirúrgico, gravidez, menores, etc.), estas regras não se aplicam, e uma revisão mais detalhada por especialistas está planeada para uma versão futura. Exclusão(ões) acionada(s): {triggered_exclusions}.",
+          "ja": "本ルールセットは「18歳以上、既往疾患のない健康な成人」を対象としたエビデンスに基づいています。対象者がこの範囲外(怪我・術後・妊娠中・未成年等)の場合、このルールセットの適用外です。より詳細な専門家レビューは将来のリリースで計画されています。該当した除外フラグ: {triggered_exclusions}。"
         },
         "pass": {
           "en": "The target population (healthy adult, 18+, no diagnosed disease, injury, or pregnancy) falls within the population this ruleset is designed for."
@@ -44,7 +44,7 @@
       },
       "severity": "high",
       "version": "1.0",
-      "last_reviewed": "2026-08-01",
+      "last_reviewed": "2026-08-07",
       "verification_status": "verified"
     },
     {
@@ -449,6 +449,7 @@
   ],
   "ruleset_notes": {
     "verification_status_meaning": "pending_source_check = extracted by LLM, not yet manually cross-checked against the source PDF. verified = manually confirmed against source. Update this field per rule as cross-checks are completed.",
-    "batch_verification_plan": "Verification of A1/B7/B8-equivalent rules to be done in one batch after extraction from all 3 source documents is complete."
+    "batch_verification_plan": "Verification of A1/B7/B8-equivalent rules to be done in one batch after extraction from all 3 source documents is complete.",
+    "lenient_exclusion_euphemism_limit": "See the same-named note on the NSCA older-adults ruleset. Euphemistic decline language without clear exclusion cues or age can miss population-gate exclusion and fall through to default healthy_adult_18plus evaluation under this ACSM ruleset."
   }
 }

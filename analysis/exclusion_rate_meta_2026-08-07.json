@@ -1,0 +1,27 @@
+{
+  "n": 200,
+  "seed": 20260807,
+  "models": {
+    "prompt": "gpt-4o-mini",
+    "extraction": "gpt-4o-mini"
+  },
+  "usage_prompt_gen_only": {
+    "prompt_tokens": 7602,
+    "completion_tokens": 6295
+  },
+  "cost_estimate": {
+    "est_input_tokens": 916000.0,
+    "est_output_tokens": 264000.0,
+    "est_usd_mid": 0.296,
+    "est_usd_low": 0.177,
+    "est_usd_high": 0.532,
+    "prompt_calls": 20.0,
+    "extraction_calls": 200.0
+  },
+  "age_weights_renormalized": {
+    "18-64": 0.8172043010752688,
+    "65+_healthy": 0.10752688172043011,
+    "65+_frail": 0.02150537634408602,
+    "minor_under_18": 0.053763440860215055
+  }
+}

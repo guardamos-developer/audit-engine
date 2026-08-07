@@ -21,6 +21,7 @@ from src.layer1_engine import (  # noqa: E402
 )
 from src.plan_extractor import (  # noqa: E402
     EQUIPMENT_MODALITY_ENUM,
+    LENIENT_EXCLUSION_FIELDS,
     STRICT_ACCOMMODATION_FIELDS,
     _PLAN_FIELD_SPECS,
     _SYSTEM_PROMPT,
@@ -167,12 +168,14 @@ def test_schema_and_prompt_cover_table3_strict_fields():
             "equipment_modality",
         }
     )
+    assert LENIENT_EXCLUSION_FIELDS.isdisjoint(STRICT_ACCOMMODATION_FIELDS)
     schema = build_extraction_json_schema()
     modality = schema["properties"]["equipment_modality"]["properties"]["value"]
     assert modality["anyOf"][0]["enum"] == list(EQUIPMENT_MODALITY_ENUM)
 
     prompt = _SYSTEM_PROMPT
     assert "STRICT accommodation" in prompt or "null-if-uncertain" in prompt
+    assert "LENIENT exclusion" in prompt
     assert "blood_glucose_monitoring_mentioned" in prompt
     assert "equipment_modality" in prompt
     assert "false positive" in prompt.lower() or "incorrectly pass" in prompt.lower()
@@ -194,6 +197,29 @@ def test_materialize_rejects_guessed_accommodation_without_quote():
     plan, _ = _materialize_plan_and_evidence(raw)
     assert plan["blood_glucose_monitoring_mentioned"] is None
     assert plan["equipment_modality"] is None
+
+
+def test_lenient_exclusion_asymmetry_does_not_relax_strict_accommodations():
+    """Lenient exclusion policy must not change STRICT accommodation null-if-uncertain.
+
+    Directly asserts the asymmetry: every STRICT field still drops bare true
+    values without evidence_quote, while remaining disjoint from LENIENT set.
+    """
+    assert LENIENT_EXCLUSION_FIELDS.isdisjoint(STRICT_ACCOMMODATION_FIELDS)
+    raw = {
+        name: {"value": None, "evidence_quote": None} for name in _PLAN_FIELD_SPECS
+    }
+    for field in STRICT_ACCOMMODATION_FIELDS:
+        if field == "equipment_modality":
+            raw[field] = {
+                "value": "machine_preferred_or_only",
+                "evidence_quote": None,
+            }
+        else:
+            raw[field] = {"value": True, "evidence_quote": None}
+    plan, _ = _materialize_plan_and_evidence(raw)
+    for field in STRICT_ACCOMMODATION_FIELDS:
+        assert plan[field] is None, field
 
 
 def test_materialize_rejects_invalid_equipment_modality_enum():

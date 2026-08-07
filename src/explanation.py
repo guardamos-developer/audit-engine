@@ -39,8 +39,11 @@ def render_explanation(
 
     def _replace(match: re.Match) -> str:
         key = match.group(1)
-        if key in matched_parameters:
-            return str(matched_parameters[key])
-        return match.group(0)
+        if key not in matched_parameters:
+            return match.group(0)
+        value = matched_parameters[key]
+        if isinstance(value, (list, tuple, set)):
+            return ", ".join(str(v) for v in value)
+        return str(value)
 
     return _PLACEHOLDER_RE.sub(_replace, template)

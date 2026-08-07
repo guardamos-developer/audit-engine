@@ -38,7 +38,11 @@ def _format_extraction_payload(extraction: dict) -> dict[str, Any]:
 
 
 def _apply_raw_text_verdict_overrides(
-    result: dict[str, Any], extraction: dict[str, Any], injection_warning: list[str]
+    result: dict[str, Any],
+    extraction: dict[str, Any],
+    injection_warning: list[str],
+    *,
+    lang: str = "en",
 ) -> dict[str, Any]:
     """Apply injection / meta / missed-cue overrides (identical to CLI)."""
     meta_detected = bool(extraction.get("possible_meta_instruction_detected"))
@@ -57,6 +61,7 @@ def _apply_raw_text_verdict_overrides(
             result["verdict"],
             result.get("matched_rules") or [],
             result.get("checked_facts") or [],
+            lang=lang,
             injection_warning=result.get("injection_warning"),
             possible_meta_instruction_detected=result.get(
                 "possible_meta_instruction_detected"
@@ -77,6 +82,7 @@ def _apply_raw_text_verdict_overrides(
             result["verdict"],
             result.get("matched_rules") or [],
             result.get("checked_facts") or [],
+            lang=lang,
         )
     return result
 
@@ -113,7 +119,9 @@ def run_raw_text_pipeline(
         lang=lang,
         skip_layer3=skip_layer3,
     )
-    result = _apply_raw_text_verdict_overrides(result, extraction, injection_warning)
+    result = _apply_raw_text_verdict_overrides(
+        result, extraction, injection_warning, lang=lang
+    )
 
     return {
         "extraction": _format_extraction_payload(extraction),

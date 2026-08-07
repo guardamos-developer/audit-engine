@@ -1,0 +1,83 @@
+{
+  "user_prompt": "I'm already elderly, so I'd like a gentle plan.",
+  "ai_response": "Suggest 3 sessions per week, 3 sets of 8-10 reps, about 2 minutes rest, using a mix of machines and bodyweight. Keep effort moderate.",
+  "expected_plan": {
+    "stated_age_category": "older_adult"
+  },
+  "expected_audit": {
+    "verdict": "pass",
+    "effective_target_population": "older_adult_healthy",
+    "require_nsca_applicable": true
+  },
+  "recorded_extraction": {
+    "stated_age_category": {
+      "value": "older_adult",
+      "evidence_quote": "I'm already elderly"
+    },
+    "goal": {
+      "value": "strength",
+      "evidence_quote": "gentle plan"
+    },
+    "sessions_per_week": {
+      "value": 3,
+      "evidence_quote": "3 sessions per week"
+    },
+    "sets_per_exercise": {
+      "value": 2,
+      "evidence_quote": "3 sets"
+    },
+    "load_percent_1RM": {
+      "value": 75,
+      "evidence_quote": "Keep effort moderate"
+    },
+    "repetitions_per_set": {
+      "value": 10,
+      "evidence_quote": "8-10 reps"
+    },
+    "injury_present": {
+      "value": null,
+      "evidence_quote": null
+    },
+    "post_surgical": {
+      "value": null,
+      "evidence_quote": null
+    },
+    "pain_present": {
+      "value": null,
+      "evidence_quote": null
+    },
+    "pregnant": {
+      "value": null,
+      "evidence_quote": null
+    },
+    "frailty_present": {
+      "value": null,
+      "evidence_quote": null
+    },
+    "uncontrolled_hypertension": {
+      "value": null,
+      "evidence_quote": null
+    },
+    "unstable_cardiovascular_disease": {
+      "value": null,
+      "evidence_quote": null
+    },
+    "program_mandates_training_to_failure": {
+      "value": false,
+      "evidence_quote": "Keep effort moderate"
+    },
+    "program_mandates_complex_periodization_as_required": {
+      "value": false,
+      "evidence_quote": "Keep effort moderate"
+    },
+    "output_claims_RT_is_unsafe_for_older_adult_without_specific_contraindication": {
+      "value": false,
+      "evidence_quote": "gentle plan"
+    },
+    "output_recommends_zero_resistance_training_for_muscle_function_goal": {
+      "value": false,
+      "evidence_quote": "Suggest 3 sessions"
+    }
+  },
+  "source_note": "Recorded from live gpt-4o-mini extraction on 2026-08-07 (unified 9-case pass). var2 euphemistic-stamina miss is a documented known limit, not a fixture. ai_response is a fixed English template (not model-generated)."
+}

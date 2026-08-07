@@ -44,6 +44,71 @@ def test_build_summary_rejected():
     assert "See explanations for details." in summary
 
 
+def test_build_summary_respects_lang():
+    """Fix3: summary strings for en / pt / ja must each use the matching language."""
+    for verdict, rules, facts, needles in (
+        (
+            "rejected",
+            ["L1-RT-0001"],
+            [],
+            {
+                "en": ("issue(s) flagged", "See explanations"),
+                "pt": ("sinalizado", "Consulte as explanations"),
+                "ja": ("フラグ", "explanations を参照"),
+            },
+        ),
+        (
+            "pass",
+            [],
+            [{"rule_id": "L1-RT-0002"}],
+            {
+                "en": ("checks passed",),
+                "pt": ("verificações passaram",),
+                "ja": ("チェックがパス",),
+            },
+        ),
+        (
+            "insufficient_data",
+            [],
+            [],
+            {
+                "en": ("Not enough information",),
+                "pt": ("informação suficiente",),
+                "ja": ("十分な情報",),
+            },
+        ),
+    ):
+        for lang, expected_parts in needles.items():
+            summary = build_summary(
+                verdict, matched_rules=rules, checked_facts=facts, lang=lang
+            )
+            for part in expected_parts:
+                assert part in summary, (verdict, lang, part, summary)
+            if rules:
+                assert "L1-RT-0001" in summary
+
+    result = run_audit(
+        {
+            "age_years": 14,
+            "minor": None,
+            "goal": "general",
+            "injury_present": False,
+            "post_surgical": False,
+            "pain_present": False,
+            "pregnant": False,
+            "true_beginner_first_weeks": False,
+            "program_mandates_training_to_failure": False,
+            "program_mandates_complex_periodization_as_required": False,
+            "output_claims_RT_is_unsafe_for_healthy_adult_without_specific_contraindication": False,
+            "output_recommends_zero_resistance_training_for_muscle_function_goal": False,
+        },
+        lang="ja",
+        skip_layer3=True,
+    )
+    assert result["verdict"] == "rejected"
+    assert "フラグ" in result["summary"]
+
+
 def test_build_summary_insufficient_data():
     summary = build_summary("insufficient_data", matched_rules=[], checked_facts=[])
     assert summary == (

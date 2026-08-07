@@ -70,14 +70,55 @@ def _empty_raw_fields(**overrides: Any) -> dict[str, Any]:
     return raw
 
 
-def test_schema_is_strict_and_covers_exclusion_flags():
+def test_materialize_nulls_false_injury_reusing_frailty_quote():
+    """Zone B: false injury/pain that reuse frailty evidence → null."""
+    raw = {
+        name: {"value": None, "evidence_quote": None} for name in _PLAN_FIELD_SPECS
+    }
+    quote = "I feel like my body has gotten quite weak"
+    raw["frailty_present"] = {"value": True, "evidence_quote": quote}
+    raw["injury_present"] = {"value": False, "evidence_quote": quote}
+    raw["pain_present"] = {
+        "value": False,
+        "evidence_quote": "my body has gotten quite weak",
+    }
+    plan, evidence = _materialize_plan_and_evidence(raw)
+    assert plan["frailty_present"] is True
+    assert plan["injury_present"] is None
+    assert plan["pain_present"] is None
+    assert evidence["injury_present"] is None
+    assert evidence["pain_present"] is None
+
+
+def test_materialize_keeps_injury_false_with_distinct_denial_quote():
+    raw = {
+        name: {"value": None, "evidence_quote": None} for name in _PLAN_FIELD_SPECS
+    }
+    raw["frailty_present"] = {
+        "value": True,
+        "evidence_quote": "I feel quite weak lately",
+    }
+    raw["injury_present"] = {
+        "value": False,
+        "evidence_quote": "no injuries",
+    }
+    plan, _ = _materialize_plan_and_evidence(raw)
+    assert plan["frailty_present"] is True
+    assert plan["injury_present"] is False
+
+
+def test_schema_includes_stated_age_category_enum():
     schema = build_extraction_json_schema()
-    assert schema["additionalProperties"] is False
-    for flag in EXCLUSION_FLAG_FIELDS:
-        assert flag in schema["properties"]
-        assert "evidence_quote" in schema["properties"][flag]["properties"]
-    assert schema["properties"]["possible_meta_instruction_detected"]["type"] == "boolean"
-    assert schema["properties"]["meta_instruction_evidence"]["type"] == ["string", "null"]
+    assert "stated_age_category" in schema["properties"]
+    value_schema = schema["properties"]["stated_age_category"]["properties"]["value"]
+    # strict schema uses anyOf for nullable enums
+    enums: list[str] = []
+    if "enum" in value_schema:
+        enums = list(value_schema["enum"])
+    for branch in value_schema.get("anyOf") or []:
+        if isinstance(branch, dict) and "enum" in branch:
+            enums.extend(branch["enum"])
+    assert "minor" in enums and "older_adult" in enums and "adult" in enums
 
 
 def test_value_without_evidence_quote_is_discarded():

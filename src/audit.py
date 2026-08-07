@@ -13,11 +13,15 @@ from .layer3_generator import generate_layer3_response
 
 REJECT_ACTIONS = frozenset({"route_to_layer2_or_reject", "reject"})
 
+_SUMMARY_LANGS = frozenset({"en", "pt", "ja"})
+
 
 def build_summary(
     verdict: str,
     matched_rules: list[str] | None = None,
     checked_facts: list[dict] | None = None,
+    *,
+    lang: str = "en",
     **context: Any,
 ) -> str:
     """Deterministically build a short, always-present summary string.
@@ -25,24 +29,54 @@ def build_summary(
     Assembled only from already-computed counts and ids (matched_rules,
     checked_facts, optional injection/meta context). Does not call an LLM
     and does not add claims beyond what those fields already state.
+
+    ``lang`` selects en / pt / ja (falls back to en).
     """
+    lang = lang if lang in _SUMMARY_LANGS else "en"
     rules = list(matched_rules or [])
     facts = list(checked_facts or [])
 
     if verdict == "pass":
-        return f"{len(facts)} checks passed, 0 flagged."
+        n = len(facts)
+        return {
+            "en": f"{n} checks passed, 0 flagged.",
+            "pt": f"{n} verificações passaram, 0 sinalizadas.",
+            "ja": f"{n}件のチェックがパス、フラグ0件。",
+        }[lang]
 
     if verdict in ("flagged", "rejected"):
         ids = ", ".join(rules)
+        n = len(rules)
         if ids:
-            return (
-                f"{len(rules)} issue(s) flagged: {ids}. "
-                "See explanations for details."
-            )
-        return f"{len(rules)} issue(s) flagged. See explanations for details."
+            return {
+                "en": (
+                    f"{n} issue(s) flagged: {ids}. "
+                    "See explanations for details."
+                ),
+                "pt": (
+                    f"{n} problema(s) sinalizado(s): {ids}. "
+                    "Consulte as explanations para detalhes."
+                ),
+                "ja": (
+                    f"{n}件の問題がフラグされました: {ids}。"
+                    "詳細は explanations を参照してください。"
+                ),
+            }[lang]
+        return {
+            "en": f"{n} issue(s) flagged. See explanations for details.",
+            "pt": f"{n} problema(s) sinalizado(s). Consulte as explanations.",
+            "ja": f"{n}件の問題がフラグされました。詳細は explanations を参照してください。",
+        }[lang]
 
     if verdict == "insufficient_data":
-        return "Not enough information could be extracted to complete an audit."
+        return {
+            "en": "Not enough information could be extracted to complete an audit.",
+            "pt": (
+                "Não foi possível extrair informação suficiente "
+                "para concluir a auditoria."
+            ),
+            "ja": "監査を完了するのに十分な情報を抽出できませんでした。",
+        }[lang]
 
     if verdict == "flagged_for_review":
         details: list[str] = []
@@ -51,7 +85,13 @@ def build_summary(
             preview = ", ".join(str(p) for p in injection_warning[:3])
             if len(injection_warning) > 3:
                 preview += ", ..."
-            details.append(f"injection pattern(s) detected ({preview})")
+            details.append(
+                {
+                    "en": f"injection pattern(s) detected ({preview})",
+                    "pt": f"padrão(ões) de injeção detectado(s) ({preview})",
+                    "ja": f"インジェクションパターンを検出 ({preview})",
+                }[lang]
+            )
         meta_detected = bool(context.get("possible_meta_instruction_detected"))
         meta_evidence = context.get("meta_instruction_evidence")
         if meta_detected or meta_evidence:
@@ -60,15 +100,36 @@ def build_summary(
                 if len(short) > 80:
                     short = short[:77] + "..."
                 details.append(
-                    f"possible meta-instruction detected in input ({short})"
+                    {
+                        "en": f"possible meta-instruction detected in input ({short})",
+                        "pt": (
+                            f"possível meta-instrução detectada na entrada ({short})"
+                        ),
+                        "ja": f"入力にメタ指示の可能性 ({short})",
+                    }[lang]
                 )
             else:
-                details.append("possible meta-instruction detected in input")
+                details.append(
+                    {
+                        "en": "possible meta-instruction detected in input",
+                        "pt": "possível meta-instrução detectada na entrada",
+                        "ja": "入力にメタ指示の可能性",
+                    }[lang]
+                )
+        prefix = {
+            "en": "Flagged for manual review",
+            "pt": "Sinalizado para revisão manual",
+            "ja": "人手レビューのためフラグ",
+        }[lang]
         if details:
-            return "Flagged for manual review: " + "; ".join(details) + "."
-        return "Flagged for manual review."
+            return prefix + ": " + "; ".join(details) + "."
+        return prefix + "."
 
-    return f"Audit completed with verdict '{verdict}'."
+    return {
+        "en": f"Audit completed with verdict '{verdict}'.",
+        "pt": f"Auditoria concluída com veredicto '{verdict}'.",
+        "ja": f"監査完了（判定: '{verdict}'）。",
+    }[lang]
 
 
 def _derive_verdict(
@@ -157,7 +218,9 @@ def run_audit(
     pass_facts = checked_facts if verdict == "pass" else []
     return {
         "verdict": verdict,
-        "summary": build_summary(verdict, matched_rule_ids, pass_facts),
+        "summary": build_summary(
+            verdict, matched_rule_ids, pass_facts, lang=lang
+        ),
         "matched_rules": matched_rule_ids,
         "explanations": explanations,
         "checked_facts": pass_facts,

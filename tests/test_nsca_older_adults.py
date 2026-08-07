@@ -11,13 +11,17 @@ if str(ROOT) not in sys.path:
 
 from src.audit import run_audit  # noqa: E402
 from src.layer1_engine import (  # noqa: E402
+    apply_deterministic_age_derived_flags,
     effective_target_population,
     evaluate_layer1,
     evaluate_layer1_detailed,
 )
 from src.plan_extractor import (  # noqa: E402
     EXCLUSION_FLAG_FIELDS,
+    LENIENT_EXCLUSION_FIELDS,
+    STRICT_ACCOMMODATION_FIELDS,
     _PLAN_FIELD_SPECS,
+    _SYSTEM_PROMPT,
     build_extraction_json_schema,
 )
 
@@ -63,6 +67,7 @@ def _older_adult_strength_plan(**overrides):
 def test_schema_includes_nsca_exclusion_and_age_fields():
     for name in (
         "age_years",
+        "stated_age_category",
         "repetitions_per_set",
         "frailty_present",
         "uncontrolled_hypertension",
@@ -70,6 +75,12 @@ def test_schema_includes_nsca_exclusion_and_age_fields():
     ):
         assert name in _PLAN_FIELD_SPECS
     schema = build_extraction_json_schema()
+    value_schema = schema["properties"]["stated_age_category"]["properties"]["value"]
+    enums: list[str] = []
+    for branch in value_schema.get("anyOf") or []:
+        if isinstance(branch, dict) and "enum" in branch:
+            enums.extend(branch["enum"])
+    assert enums == ["minor", "older_adult", "adult"]
     for name in (
         "frailty_present",
         "uncontrolled_hypertension",
@@ -97,6 +108,85 @@ def test_effective_target_population_age_routing():
         )
         == "older_adult_healthy"
     )
+    # Qualitative stated_age_category when age_years is null.
+    assert (
+        effective_target_population({"stated_age_category": "older_adult"})
+        == "older_adult_healthy"
+    )
+    assert (
+        effective_target_population({"stated_age_category": "minor"})
+        == "healthy_adult_18plus"
+    )
+    # Numeric age wins over stated_age_category.
+    assert (
+        effective_target_population(
+            {"age_years": 40, "stated_age_category": "older_adult"}
+        )
+        == "healthy_adult_18plus"
+    )
+
+
+def test_age_under_18_forces_minor_even_when_extractor_left_null():
+    """Numeric age < 18 deterministically sets minor=True (Zone B)."""
+    forced = apply_deterministic_age_derived_flags(
+        {"age_years": 14, "minor": None, "goal": "general"}
+    )
+    assert forced["minor"] is True
+    forced_false = apply_deterministic_age_derived_flags(
+        {"age_years": 15, "minor": False}
+    )
+    assert forced_false["minor"] is True
+    # Adult ages are not forced either way.
+    adult = apply_deterministic_age_derived_flags({"age_years": 40, "minor": None})
+    assert adult.get("minor") is None
+    # Qualitative underage self-ID without numeric age.
+    qualitative = apply_deterministic_age_derived_flags(
+        {"stated_age_category": "minor", "minor": None}
+    )
+    assert qualitative["minor"] is True
+
+    # End-to-end: age 14 with minor null must hit ACSM population gate.
+    plan = {
+        "age_years": 14,
+        "minor": None,
+        "goal": "strength",
+        "sets_per_exercise": 3,
+        "load_percent_1RM": 70,
+        "injury_present": False,
+        "post_surgical": False,
+        "pain_present": False,
+        "pregnant": False,
+        "true_beginner_first_weeks": False,
+        "program_mandates_training_to_failure": False,
+        "program_mandates_complex_periodization_as_required": False,
+        "output_claims_RT_is_unsafe_for_healthy_adult_without_specific_contraindication": False,
+        "output_recommends_zero_resistance_training_for_muscle_function_goal": False,
+    }
+    matches = evaluate_layer1(plan)
+    assert matches and matches[0]["rule_id"] == "L1-RT-0001"
+    assert matches[0]["action"] == "route_to_layer2_or_reject"
+
+
+def test_stated_age_category_older_adult_routes_to_nsca():
+    plan = _older_adult_strength_plan()
+    plan.pop("age_years", None)
+    plan["stated_age_category"] = "older_adult"
+    plan["sets_per_exercise"] = 4  # outside NSCA 1-3
+    matches = evaluate_layer1(plan)
+    ids = {m["rule_id"] for m in matches}
+    assert "L1-RT-NSCA-0002" in ids
+    assert "L1-RT-0001" not in ids
+
+
+def test_lenient_exclusion_fields_opposite_strict_accommodation():
+    assert LENIENT_EXCLUSION_FIELDS.isdisjoint(STRICT_ACCOMMODATION_FIELDS)
+    assert "minor" in LENIENT_EXCLUSION_FIELDS
+    assert "frailty_present" in LENIENT_EXCLUSION_FIELDS
+    assert "injury_present" in LENIENT_EXCLUSION_FIELDS
+    prompt = _SYSTEM_PROMPT
+    assert "LENIENT exclusion" in prompt
+    assert "少し体が弱っている" in prompt or "frail" in prompt
+    assert "opposite of item 5" in prompt or "Contrast with item 5" in prompt
 
 
 def test_older_adult_fires_nsca_not_conflicting_acsm():
