@@ -93,6 +93,9 @@ _PLAN_FIELD_SPECS: dict[str, dict[str, Any]] = {
     "output_claims_RT_is_unsafe_for_healthy_adult_without_specific_contraindication": {
         "json_type": ["boolean", "null"]
     },
+    "output_claims_RT_is_unsafe_for_older_adult_without_specific_contraindication": {
+        "json_type": ["boolean", "null"]
+    },
     "output_recommends_zero_resistance_training_for_muscle_function_goal": {
         "json_type": ["boolean", "null"]
     },
@@ -208,6 +211,12 @@ Rules (mandatory):
      explicit RIR language).
    - null when failure/RIR/RPE/AMRAP is not clearly stated — do not guess.
    Do not treat "train hard" alone as training to failure.
+8b. output_claims_RT_is_unsafe_for_older_adult_without_specific_contraindication:
+   - true when the AI response claims resistance training is unsafe/dangerous
+     for a healthy older adult without naming a specific contraindication.
+   - Prefer this field (not the healthy_adult variant) when the user is clearly
+     an older adult / age >= 65.
+   - false when safety of RT for older adults is affirmed; null when unclear.
 9. plan_uses_FIT_rule_IRV_as_primary_constraint:
    - true only when the text explicitly uses the FIT rule / IRV (11-30 units)
      as the primary intensity limit for the plan.

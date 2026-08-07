@@ -61,12 +61,21 @@
       },
       "applicability": {
         "population": ["older_adult_healthy"],
-        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant"]
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
       },
       "condition": {
         "type": "range_check",
         "check": "sets_per_exercise NOT BETWEEN min_sets AND max_sets",
-        "parameters": { "min_sets": 1, "max_sets": 3 }
+        "parameters": {
+          "min_sets": 1,
+          "max_sets": 3
+        }
       },
       "action": "flag_suboptimal",
       "reason_template": {
@@ -95,12 +104,21 @@
       },
       "applicability": {
         "population": ["older_adult_healthy"],
-        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant"]
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
       },
       "condition": {
         "type": "range_check",
         "check": "repetitions_per_set NOT BETWEEN min_reps AND max_reps",
-        "parameters": { "min_reps": 6, "max_reps": 15 }
+        "parameters": {
+          "min_reps": 6,
+          "max_reps": 15
+        }
       },
       "action": "flag_suboptimal",
       "reason_template": {
@@ -132,15 +150,24 @@
         "population": ["older_adult_healthy"],
         "goal": "strength",
         "excludes": [
-          "injury_present", "post_surgical", "pain_present", "minor", "pregnant",
-          "true_beginner_first_weeks", "frailty_present",
-          "cardiovascular_disease_present", "osteoporosis_present"
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "true_beginner_first_weeks",
+          "frailty_present",
+          "cardiovascular_disease_present",
+          "osteoporosis_present"
         ]
       },
       "condition": {
         "type": "range_check",
         "check": "load_percent_1RM NOT BETWEEN min_intensity AND max_intensity",
-        "parameters": { "min_intensity": 70, "max_intensity": 85 }
+        "parameters": {
+          "min_intensity": 70,
+          "max_intensity": 85
+        }
       },
       "action": "flag_suboptimal",
       "reason_template": {
@@ -171,12 +198,21 @@
       "applicability": {
         "population": ["older_adult_healthy"],
         "goal": "power",
-        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant"]
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant"
+        ]
       },
       "condition": {
         "type": "range_check",
         "check": "load_percent_1RM NOT BETWEEN min_power_load AND max_power_load",
-        "parameters": { "min_power_load": 40, "max_power_load": 60 }
+        "parameters": {
+          "min_power_load": 40,
+          "max_power_load": 60
+        }
       },
       "action": "flag_suboptimal",
       "reason_template": {
@@ -205,7 +241,14 @@
       },
       "applicability": {
         "population": ["older_adult_healthy"],
-        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present"
+        ]
       },
       "condition": {
         "type": "accommodation_check",
@@ -248,7 +291,14 @@
       },
       "applicability": {
         "population": ["older_adult_healthy"],
-        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present"
+        ]
       },
       "condition": {
         "type": "accommodation_check",
@@ -292,7 +342,14 @@
       },
       "applicability": {
         "population": ["older_adult_healthy"],
-        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present"
+        ]
       },
       "condition": {
         "type": "accommodation_check",
@@ -336,7 +393,14 @@
       },
       "applicability": {
         "population": ["older_adult_healthy"],
-        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present"
+        ]
       },
       "condition": {
         "type": "accommodation_check",
@@ -379,7 +443,14 @@
       },
       "applicability": {
         "population": ["older_adult_healthy"],
-        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present"
+        ]
       },
       "condition": {
         "type": "accommodation_check",
@@ -423,13 +494,24 @@
       },
       "applicability": {
         "population": ["older_adult_healthy"],
-        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present"
+        ]
       },
       "condition": {
         "type": "accommodation_check",
         "check": "(poor_vision_or_balance_present == true OR fall_risk_present == true OR low_back_pain_present == true) AND equipment_modality == 'free_weight_only'",
         "parameters": {
-          "condition_fields": ["poor_vision_or_balance_present", "fall_risk_present", "low_back_pain_present"],
+          "condition_fields": [
+            "poor_vision_or_balance_present",
+            "fall_risk_present",
+            "low_back_pain_present"
+          ],
           "accommodation_field": "equipment_modality",
           "accommodation_type": "enum_exclude",
           "excluded_value": "free_weight_only"
@@ -455,12 +537,176 @@
       "version": "1.0",
       "last_reviewed": "2026-08-07",
       "verification_status": "verified"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0012",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment_caution",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 1 (Intensity footnote), p.2025",
+        "note": "Older-adult-specific rationale (joint stress reduction) is more explicit here than in the general-adult ACSM equivalent (L1-RT-0007)."
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present"
+        ]
+      },
+      "condition": {
+        "type": "boolean_check",
+        "check": "program_mandates_training_to_failure == true"
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "flagged": {
+          "en": "Training every set to momentary muscular failure is not required to improve strength, hypertrophy, or power in older adults. Table 1 specifically recommends performing repetitions in an intensity zone that avoids failure to reduce joint stress. This should not be imposed as a mandatory requirement.",
+          "pt": "Treinar todas as séries até à falha muscular momentânea não é necessário para melhorar a força, a hipertrofia ou a potência em idosos. A Tabela 1 recomenda especificamente realizar as repetições numa zona de intensidade que evite a falha, para reduzir o stress articular. Isto não deve ser imposto como requisito obrigatório.",
+          "ja": "毎セットを完全な筋力低下(failure)まで追い込むことは、高齢者の筋力・筋肥大・パワーの向上に必須ではありません。Table1では特に、関節へのストレスを軽減するためfailureを避ける強度域での反復が推奨されています。必須要件として課すべきではありません。"
+        },
+        "pass": {
+          "en": "The plan does not mandate training every set to momentary muscular failure, consistent with Table 1's recommendation to avoid failure to reduce joint stress in older adults."
+        }
+      },
+      "severity": "medium",
+      "version": "1.0",
+      "last_reviewed": "2026-08-07",
+      "verification_status": "verified"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0013",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "safety_baseline_bidirectional",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Summary Statement 1; body text 'A Properly Designed Resistance Training Program...Is Safe for Healthy Older Adults', p.2021",
+        "note": "Cites a systematic review of physically frail oldest-old (70-92yo) reporting only one case of shoulder pain across 20 studies and 2,544 subjects."
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present"
+        ]
+      },
+      "condition": {
+        "type": "boolean_check",
+        "check": "output_claims_RT_is_unsafe_for_older_adult_without_specific_contraindication == true"
+      },
+      "action": "flag_inaccurate_overcaution",
+      "reason_template": {
+        "flagged": {
+          "en": "Both research and clinical experience indicate resistance training is safe for healthy older adults when properly designed with appropriate instruction and spotting. A systematic review of physically frail oldest-old adults (70-92 years) found only one case of shoulder pain across 20 studies and 2,544 subjects. Absent a specific identified contraindication, unfounded claims of excessive danger are inaccurate.",
+          "pt": "Tanto a investigação como a experiência clínica indicam que o treino de resistência é seguro para idosos saudáveis quando corretamente concebido, com instrução e supervisão adequadas. Uma revisão sistemática de idosos fisicamente frágeis (70-92 anos) encontrou apenas um caso de dor no ombro em 20 estudos e 2.544 participantes. Na ausência de uma contraindicação específica identificada, afirmações infundadas de perigo excessivo são incorretas.",
+          "ja": "研究・臨床経験のいずれも、適切な指導とスポッティングを伴う適切に設計されたレジスタンストレーニングは健康な高齢者にとって安全であることを示しています。70〜92歳の身体的に虚弱な最高齢層を対象とした系統的レビューでは、20研究・2,544人中、肩の痛みが1例報告されたのみでした。具体的な禁忌事項が特定されていない場合、根拠のない過度な危険性の主張は不正確です。"
+        },
+        "pass": {
+          "en": "The plan does not make unfounded claims that resistance training is unsafe for this healthy older adult population absent a specific identified contraindication."
+        }
+      },
+      "severity": "medium",
+      "version": "1.0",
+      "last_reviewed": "2026-08-07",
+      "verification_status": "verified"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0014",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "'General formats for progression' (Conlon et al. comparison study), p.2026",
+        "note": "Stronger evidence than the general-adult ACSM equivalent (L1-RT-0009): the source explicitly contrasts older adults with younger populations, where periodized programs DO show superiority. For older adults specifically, no such superiority was found."
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present"
+        ]
+      },
+      "condition": {
+        "type": "boolean_check",
+        "check": "program_mandates_complex_periodization_as_required == true"
+      },
+      "action": "flag_suboptimal",
+      "reason_template": {
+        "flagged": {
+          "en": "A landmark direct comparison (Conlon et al.) found no differences in strength, functional capacity, or other outcomes between periodized and non-periodized resistance training in older adults after 22 weeks -- unlike younger populations, where periodized programs do show superiority. A complex periodization structure should not be treated as a mandatory requirement for older adults.",
+          "pt": "Um estudo de referência com comparação direta (Conlon et al.) não encontrou diferenças na força, capacidade funcional ou outros resultados entre treino de resistência periodizado e não periodizado em idosos após 22 semanas -- ao contrário de populações mais jovens, onde os programas periodizados demonstram superioridade. Uma estrutura de periodização complexa não deve ser tratada como requisito obrigatório para idosos.",
+          "ja": "Conlon et al.による直接比較研究では、22週間後の高齢者において、periodized(期分け)とnon-periodizedのレジスタンストレーニングの間で、筋力・機能的能力等に差が見られませんでした。これは、periodizedプログラムが優位性を示す若年層とは対照的です。複雑な期分け構造を高齢者に対する必須要件として課すべきではありません。"
+        },
+        "pass": {
+          "en": "The plan does not impose a complex periodization structure as a strict requirement, consistent with evidence that periodization is not shown to be superior to non-periodized programs in older adults."
+        }
+      },
+      "severity": "low",
+      "version": "1.0",
+      "last_reviewed": "2026-08-07",
+      "verification_status": "verified"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0015",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Abstract / Introduction, p.2019-2020"
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present"
+        ]
+      },
+      "condition": {
+        "type": "boolean_check",
+        "check": "output_recommends_zero_resistance_training_for_muscle_function_goal == true"
+      },
+      "action": "flag_suboptimal",
+      "reason_template": {
+        "flagged": {
+          "en": "Countering muscle disuse through resistance training is a powerful intervention to combat the loss of muscle strength and mass, physiological vulnerability, and their debilitating consequences on physical functioning, mobility, independence, and healthy life expectancy in older adults. If there is a muscle function goal, engaging in some form of resistance training is recommended over none.",
+          "pt": "Contrariar o desuso muscular através do treino de resistência é uma intervenção poderosa para combater a perda de força e massa muscular, a vulnerabilidade fisiológica, e as suas consequências debilitantes na funcionalidade física, mobilidade, independência e esperança de vida saudável em idosos. Se existir um objetivo de função muscular, recomenda-se a realização de alguma forma de treino de resistência em vez de nenhuma.",
+          "ja": "筋の廃用に対抗するレジスタンストレーニングは、高齢者における筋力・筋量の低下、生理学的脆弱性、そしてそれらが身体機能・可動性・自立・健康寿命に及ぼす深刻な影響に対抗する強力な介入です。筋機能に関する目標がある場合、何もしないよりも何らかの形のレジスタンストレーニングの実施が推奨されます。"
+        },
+        "pass": {
+          "en": "The plan recommends engaging in some form of resistance training, consistent with evidence that any resistance training outperforms none for muscle strength, mass, and functional outcomes in older adults."
+        }
+      },
+      "severity": "low",
+      "version": "1.0",
+      "last_reviewed": "2026-08-07",
+      "verification_status": "verified"
     }
   ],
   "ruleset_notes": {
     "verification_status_meaning": "pending_source_check = extracted by LLM, not yet manually cross-checked against the source PDF. verified = manually confirmed against source.",
     "population_classification_design": "target_population is a mutually exclusive classification, not a set of co-occurring tags. When age routes a case to older_adult_healthy (provisional threshold: age >= 65), healthy_adult_18plus (ACSM ruleset) must NOT also be set for the same case, to prevent both rulesets firing simultaneously with conflicting numeric thresholds (e.g. L1-RT-0003 vs L1-RT-NSCA-0002).",
     "deferred_items": "Nonconsecutive-day frequency check deferred: plan_extractor has no field distinguishing consecutive vs nonconsecutive training days, so this would always resolve to null/unevaluable. Revisit if such a field is added. Exercise-count (8-10) and modality (machine vs free-weight) rules also deferred as advisory/descriptive rather than prescriptive thresholds.",
-    "extraction_confidence_asymmetry": "Table 3 accommodation fields (whether a plan indicates a specific safety/modification measure, e.g. blood_glucose_monitoring_mentioned, rom_restricted_training_mentioned) require semantic judgment from plan_extractor, unlike Table 1's numeric fields which are near-mechanical extraction. Because a false positive here (incorrectly marking an accommodation as present) causes the rule to incorrectly return pass -- a more dangerous failure mode than a false negative (which resolves to insufficient_data for human review) -- these fields use a stricter null-if-uncertain policy: mark true only on clear, explicit textual evidence; ambiguous or suggestive language resolves to null, not true or false."
+    "extraction_confidence_asymmetry": "Table 3 accommodation fields (whether a plan indicates a specific safety/modification measure, e.g. blood_glucose_monitoring_mentioned, rom_restricted_training_mentioned) require semantic judgment from plan_extractor, unlike Table 1's numeric fields which are near-mechanical extraction. Because a false positive here (incorrectly marking an accommodation as present) causes the rule to incorrectly return pass -- a more dangerous failure mode than a false negative (which resolves to insufficient_data for human review) -- these fields use a stricter null-if-uncertain policy: mark true only on clear, explicit textual evidence; ambiguous or suggestive language resolves to null, not true or false.",
+    "population_exclusivity_gap_fix": "L1-RT-NSCA-0012 through 0015 were added after discovering that the population-exclusivity design (L1-RT-0001 gate logic) silently drops ACSM's general-adult caution rules L1-RT-0007 through 0010 for any plan routed to older_adult_healthy, since those ACSM rules only declare population: healthy_adult_18plus. These 4 new rules restore equivalent coverage for older adults, each backed by older-adult-specific evidence from the NSCA source rather than a blind copy of the ACSM rule."
   }
 }

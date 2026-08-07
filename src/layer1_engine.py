@@ -70,6 +70,11 @@ ACTIVE_RULE_IDS = frozenset(
         "L1-RT-NSCA-0009",
         "L1-RT-NSCA-0010",
         "L1-RT-NSCA-0011",
+        # NSCA older-adult mirrors of ACSM caution rules L1-RT-0007–0010
+        "L1-RT-NSCA-0012",
+        "L1-RT-NSCA-0013",
+        "L1-RT-NSCA-0014",
+        "L1-RT-NSCA-0015",
     }
 )
 
