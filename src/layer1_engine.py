@@ -63,6 +63,13 @@ ACTIVE_RULE_IDS = frozenset(
         "L1-RT-NSCA-0003",
         "L1-RT-NSCA-0004",
         "L1-RT-NSCA-0005",
+        # NSCA older adults Table 3 (condition-specific accommodations)
+        "L1-RT-NSCA-0006",
+        "L1-RT-NSCA-0007",
+        "L1-RT-NSCA-0008",
+        "L1-RT-NSCA-0009",
+        "L1-RT-NSCA-0010",
+        "L1-RT-NSCA-0011",
     }
 )
 
@@ -791,6 +798,63 @@ def _evaluate_relative_load_reduction_signal(
     return True, matched_parameters
 
 
+def _evaluate_accommodation_check(
+    condition: dict, plan: dict
+) -> tuple[bool, dict]:
+    """Evaluate disease/limitation context vs an explicit plan accommodation.
+
+    Semantics (see NSCA Table 3 rules L1-RT-NSCA-0006–0011):
+      1. No condition_field is True → not a match (caller should skip via
+         evaluability when no True is present).
+      2. Any condition_field True and accommodation is null → match with
+         ``explanation_side=insufficient_data`` (flag_caution).
+      3. Any condition_field True and accommodation absent (False, or enum
+         equal to ``excluded_value``) → match flagged.
+      4. Any condition_field True and accommodation present → no match
+         (eligible for a pass fact).
+    """
+    params = condition.get("parameters") or {}
+    condition_fields = list(params.get("condition_fields") or [])
+    accommodation_field = params.get("accommodation_field")
+    accommodation_type = params.get("accommodation_type", "boolean")
+    excluded_value = params.get("excluded_value")
+
+    condition_values = {name: plan.get(name) for name in condition_fields}
+    any_true = any(value is True for value in condition_values.values())
+    accommodation_value = (
+        plan.get(accommodation_field) if accommodation_field else None
+    )
+    matched_parameters: dict[str, Any] = {
+        **params,
+        "condition_values": condition_values,
+        "accommodation_value": accommodation_value,
+    }
+
+    if not any_true:
+        return False, matched_parameters
+
+    if accommodation_value is None:
+        matched_parameters["explanation_side"] = "insufficient_data"
+        matched_parameters["action_override"] = "flag_caution"
+        return True, matched_parameters
+
+    if accommodation_type == "boolean":
+        if accommodation_value is False:
+            matched_parameters["explanation_side"] = "flagged"
+            return True, matched_parameters
+        return False, matched_parameters
+
+    if accommodation_type == "enum_exclude":
+        if accommodation_value == excluded_value:
+            matched_parameters["explanation_side"] = "flagged"
+            return True, matched_parameters
+        return False, matched_parameters
+
+    raise ValueError(
+        f"Unsupported accommodation_type: {accommodation_type!r}"
+    )
+
+
 def _evaluate_context_gate(condition: dict, plan: dict) -> tuple[bool, dict]:
     """Moderate return track gate (L1-RTT-0008).
 
@@ -845,6 +909,8 @@ def evaluate_condition(condition: dict, plan: dict, rule: dict) -> tuple[bool, d
         return _evaluate_long_inactivity_track_compliance(condition, plan)
     if cond_type == "relative_load_reduction_signal":
         return _evaluate_relative_load_reduction_signal(condition, plan)
+    if cond_type == "accommodation_check":
+        return _evaluate_accommodation_check(condition, plan)
     raise ValueError(f"Unknown condition type: {cond_type!r}")
 
 
@@ -1005,6 +1071,13 @@ def _condition_is_evaluable(condition: dict, plan: dict, rule: dict) -> bool:
         # Need an explicit boolean; null means unknown → do not match or pass-fact.
         return plan.get("uses_relative_load_reduction") is not None
 
+    if cond_type == "accommodation_check":
+        # In scope only when at least one condition_field is explicitly True.
+        # All-false / all-null → skip (not a Table 3 case).
+        params = condition.get("parameters") or {}
+        fields = list(params.get("condition_fields") or [])
+        return any(plan.get(name) is True for name in fields)
+
     return False
 
 
@@ -1043,6 +1116,28 @@ def _build_pass_parameters(rule: dict, plan: dict) -> dict | None:
     if cond_type == "relative_load_reduction_signal":
         # Qualitative caution only — never a confirmed numeric pass fact.
         return None
+
+    if cond_type == "accommodation_check":
+        params = condition.get("parameters") or {}
+        fields = list(params.get("condition_fields") or [])
+        if not any(plan.get(name) is True for name in fields):
+            return None
+        accommodation_field = params.get("accommodation_field")
+        accommodation_value = (
+            plan.get(accommodation_field) if accommodation_field else None
+        )
+        accommodation_type = params.get("accommodation_type", "boolean")
+        if accommodation_value is None:
+            return None
+        if accommodation_type == "boolean" and accommodation_value is not True:
+            return None
+        if (
+            accommodation_type == "enum_exclude"
+            and accommodation_value == params.get("excluded_value")
+        ):
+            return None
+        out["accommodation_value"] = accommodation_value
+        return out
 
     if cond_type == "population_check":
         out["target_population"] = plan.get("target_population")

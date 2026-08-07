@@ -28,8 +28,9 @@ def render_explanation(
 ) -> str:
     """Render a rule's reason_template for ``lang`` via string substitution only.
 
-    ``side`` selects ``reason_template["flagged"]`` or ``reason_template["pass"]``.
-    Falls back to English if the requested language is missing.
+    ``side`` selects ``reason_template["flagged"]``, ``"pass"``, or
+    ``"insufficient_data"``. Falls back to English if the requested language
+    is missing.
     """
     templates = rule.get("reason_template") or {}
     template = _select_template(templates, side=side, lang=lang)

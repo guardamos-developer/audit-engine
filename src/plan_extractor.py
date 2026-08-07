@@ -18,6 +18,26 @@ from typing import Any
 
 GOAL_ENUM = ("strength", "hypertrophy", "power", "general")
 
+EQUIPMENT_MODALITY_ENUM = (
+    "free_weight_only",
+    "machine_preferred_or_only",
+    "mixed",
+    "bands_or_bodyweight",
+)
+
+# Table 3 accommodation / modality fields: true (or a concrete enum) only on
+# clear explicit evidence. Ambiguous language → null (never guess true/false).
+STRICT_ACCOMMODATION_FIELDS = frozenset(
+    {
+        "plan_offers_seated_position_option",
+        "plan_uses_simple_exercise_selection_with_instruction",
+        "blood_glucose_monitoring_mentioned",
+        "spinal_flexion_or_twisting_caution_mentioned",
+        "rom_restricted_training_mentioned",
+        "equipment_modality",
+    }
+)
+
 # Deterministic cues in ai_response that imply frequency / rest-day fields.
 # Language-agnostic-ish: short English stems plus digit+day patterns.
 _REST_DAY_CUE_RE = re.compile(
@@ -89,6 +109,27 @@ _PLAN_FIELD_SPECS: dict[str, dict[str, Any]] = {
     "unstable_cardiovascular_disease": {"json_type": ["boolean", "null"]},
     "cardiovascular_disease_present": {"json_type": ["boolean", "null"]},
     "osteoporosis_present": {"json_type": ["boolean", "null"]},
+    # NSCA older-adult Table 3 condition / accommodation fields
+    "mobility_limitation_present": {"json_type": ["boolean", "null"]},
+    "plan_offers_seated_position_option": {"json_type": ["boolean", "null"]},
+    "cognitive_impairment_present": {"json_type": ["boolean", "null"]},
+    "plan_uses_simple_exercise_selection_with_instruction": {
+        "json_type": ["boolean", "null"]
+    },
+    "diabetes_present": {"json_type": ["boolean", "null"]},
+    "blood_glucose_monitoring_mentioned": {"json_type": ["boolean", "null"]},
+    "spinal_flexion_or_twisting_caution_mentioned": {
+        "json_type": ["boolean", "null"]
+    },
+    "joint_pain_or_limited_rom_present": {"json_type": ["boolean", "null"]},
+    "rom_restricted_training_mentioned": {"json_type": ["boolean", "null"]},
+    "poor_vision_or_balance_present": {"json_type": ["boolean", "null"]},
+    "fall_risk_present": {"json_type": ["boolean", "null"]},
+    "low_back_pain_present": {"json_type": ["boolean", "null"]},
+    "equipment_modality": {
+        "json_type": ["string", "null"],
+        "enum": list(EQUIPMENT_MODALITY_ENUM),
+    },
     # CSCCa FIT / rhabdo / medical clearance (L1-RTT-0003–0006)
     "plan_uses_FIT_rule_IRV_as_primary_constraint": {"json_type": ["boolean", "null"]},
     "work_rest_ratio_denominator": {"json_type": ["integer", "null"]},
@@ -224,6 +265,31 @@ Rules (mandatory):
    - If no such relative reduction language is present, set
      uses_relative_load_reduction to false or null (null when unclear) and
      relative_reduction_evidence_quote to null.
+18. NSCA Table 3 condition / context flags (mobility_limitation_present,
+    cognitive_impairment_present, diabetes_present, osteoporosis_present,
+    joint_pain_or_limited_rom_present, poor_vision_or_balance_present,
+    fall_risk_present, low_back_pain_present):
+   - true only when the text clearly states that condition/limitation;
+   - false only when the text clearly denies it;
+   - otherwise null.
+19. STRICT accommodation / modality fields (null-if-uncertain; asymmetric):
+   plan_offers_seated_position_option,
+   plan_uses_simple_exercise_selection_with_instruction,
+   blood_glucose_monitoring_mentioned,
+   spinal_flexion_or_twisting_caution_mentioned,
+   rom_restricted_training_mentioned,
+   equipment_modality.
+   - Mark true (or a concrete equipment_modality enum) ONLY when the plan text
+     has clear, explicit evidence of that accommodation / modality.
+   - Ambiguous or merely suggestive language → null. Do NOT guess true.
+   - Do NOT set false from silence alone for these accommodation booleans:
+     absence of mention is not proof the accommodation is missing; leave null
+     unless the text clearly states the accommodation is not offered / not used.
+   - equipment_modality enum (exactly one when clear, else null):
+     ["free_weight_only", "machine_preferred_or_only", "mixed",
+      "bands_or_bodyweight"]. Never invent a modality from weak cues.
+   Rationale: a false positive (incorrect true / wrong modality) can make a
+   safety caution incorrectly pass; a false negative resolves to human review.
 """
 
 
@@ -288,6 +354,11 @@ def _materialize_plan_and_evidence(
             continue
 
         if name == "goal" and value not in GOAL_ENUM:
+            plan[name] = None
+            evidence[name] = None
+            continue
+
+        if name == "equipment_modality" and value not in EQUIPMENT_MODALITY_ENUM:
             plan[name] = None
             evidence[name] = None
             continue

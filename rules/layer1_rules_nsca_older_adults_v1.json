@@ -193,11 +193,274 @@
       "version": "1.0",
       "last_reviewed": "2026-08-07",
       "verification_status": "verified"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0006",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment_caution",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 3 (Mobility limitations row); body text 'Mobility Limitations', p.2032"
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+      },
+      "condition": {
+        "type": "accommodation_check",
+        "check": "mobility_limitation_present == true AND plan_offers_seated_position_option == false",
+        "parameters": {
+          "condition_fields": ["mobility_limitation_present"],
+          "accommodation_field": "plan_offers_seated_position_option",
+          "accommodation_type": "boolean"
+        }
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "flagged": {
+          "en": "The input indicates a mobility limitation. Table 3 recommends considering exercises performed in a seated position for this population, but the plan does not indicate a seated-position option.",
+          "pt": "A entrada indica uma limitação de mobilidade. A Tabela 3 recomenda considerando exercícios em posição sentada para esta população, mas o plano não indica essa opção.",
+          "ja": "入力情報から可動性の制限が示されています。Table3ではこの対象者に座位での種目実施の検討が推奨されていますが、プランには座位オプションの記載が見当たりません。"
+        },
+        "insufficient_data": {
+          "en": "The input indicates a mobility limitation, but the plan does not provide enough detail to determine whether a seated-position option is offered. Flagged for review rather than treated as a pass.",
+          "pt": "A entrada indica uma limitação de mobilidade, mas o plano não fornece detalhe suficiente para determinar se existe uma opção de posição sentada. Assinalado para revisão.",
+          "ja": "可動性の制限が示されていますが、座位オプションの有無を判定するのに十分な情報がプランにありません。pass扱いにはせず、確認が必要なcautionとして扱います。"
+        },
+        "pass": {
+          "en": "The input indicates a mobility limitation, and the plan indicates a seated-position option is available, consistent with Table 3."
+        }
+      },
+      "severity": "low",
+      "version": "1.0",
+      "last_reviewed": "2026-08-07",
+      "verification_status": "verified"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0007",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment_caution",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 3 (Mild cognitive impairment row); body text 'Mild Cognitive Impairment and Dementia', p.2033"
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+      },
+      "condition": {
+        "type": "accommodation_check",
+        "check": "cognitive_impairment_present == true AND plan_uses_simple_exercise_selection_with_instruction == false",
+        "parameters": {
+          "condition_fields": ["cognitive_impairment_present"],
+          "accommodation_field": "plan_uses_simple_exercise_selection_with_instruction",
+          "accommodation_type": "boolean"
+        }
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "flagged": {
+          "en": "The input indicates mild cognitive impairment. Table 3 recommends simple exercise selection with extra instruction and demonstration for this population, but the plan does not indicate this accommodation.",
+          "pt": "A entrada indica comprometimento cognitivo leve. A Tabela 3 recomenda seleção de exercícios simples com instrução e demonstração adicionais, mas o plano não indica esta adaptação.",
+          "ja": "入力情報から軽度認知障害が示されています。Table3ではこの対象者に単純な種目選択と追加の説明・実演が推奨されていますが、プランにはその配慮の記載が見当たりません。"
+        },
+        "insufficient_data": {
+          "en": "The input indicates mild cognitive impairment, but the plan does not provide enough detail to determine whether exercise selection/instruction was adapted. Flagged for review rather than treated as a pass.",
+          "pt": "A entrada indica comprometimento cognitivo leve, mas o plano não fornece detalhe suficiente. Assinalado para revisão.",
+          "ja": "軽度認知障害が示されていますが、種目選択・指導方法の調整有無を判定するのに十分な情報がプランにありません。pass扱いにはせず、確認が必要なcautionとして扱います。"
+        },
+        "pass": {
+          "en": "The input indicates mild cognitive impairment, and the plan indicates simplified exercise selection with extra instruction, consistent with Table 3."
+        }
+      },
+      "severity": "low",
+      "version": "1.0",
+      "last_reviewed": "2026-08-07",
+      "verification_status": "verified"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0008",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment_caution",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 3 (Diabetes row); body text 'Diabetes', p.2034",
+        "note": "Source explicitly flags hypoglycemia risk during resistance exercise for this population, which elevates this above a purely cosmetic/optimality concern."
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+      },
+      "condition": {
+        "type": "accommodation_check",
+        "check": "diabetes_present == true AND blood_glucose_monitoring_mentioned == false",
+        "parameters": {
+          "condition_fields": ["diabetes_present"],
+          "accommodation_field": "blood_glucose_monitoring_mentioned",
+          "accommodation_type": "boolean"
+        }
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "flagged": {
+          "en": "The input indicates diabetes. Table 3 recommends monitoring blood glucose before and after training, given the risk of exercise-induced hypoglycemia, but the plan does not indicate this monitoring.",
+          "pt": "A entrada indica diabetes. A Tabela 3 recomenda monitorizar a glicemia antes e depois do treino, dado o risco de hipoglicemia induzida pelo exercício, mas o plano não indica esta monitorização.",
+          "ja": "入力情報から糖尿病が示されています。Table3では運動誘発性低血糖のリスクを踏まえ、運動前後の血糖値モニタリングが推奨されていますが、プランにはその記載が見当たりません。"
+        },
+        "insufficient_data": {
+          "en": "The input indicates diabetes, but the plan does not provide enough detail to determine whether blood glucose monitoring is included. Flagged for review rather than treated as a pass.",
+          "pt": "A entrada indica diabetes, mas o plano não fornece detalhe suficiente. Assinalado para revisão.",
+          "ja": "糖尿病が示されていますが、血糖値モニタリングの有無を判定するのに十分な情報がプランにありません。pass扱いにはせず、確認が必要なcautionとして扱います。"
+        },
+        "pass": {
+          "en": "The input indicates diabetes, and the plan indicates blood glucose monitoring before/after training, consistent with Table 3."
+        }
+      },
+      "severity": "medium",
+      "version": "1.0",
+      "last_reviewed": "2026-08-07",
+      "verification_status": "verified"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0009",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment_caution",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 3 (Osteoporosis row); body text 'Osteoporosis', p.2036",
+        "note": "Source language ('avoiding loaded spinal flexion and modifying impact', fall-prevention emphasis) is stronger than a mere optimization suggestion, but still not numerically expressible, hence caution rather than reject."
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+      },
+      "condition": {
+        "type": "accommodation_check",
+        "check": "osteoporosis_present == true AND spinal_flexion_or_twisting_caution_mentioned == false",
+        "parameters": {
+          "condition_fields": ["osteoporosis_present"],
+          "accommodation_field": "spinal_flexion_or_twisting_caution_mentioned",
+          "accommodation_type": "boolean"
+        }
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "flagged": {
+          "en": "The input indicates osteoporosis. Table 3 recommends caution with bending/twisting movements, fall-prevention measures during balance training, and postural (spinal extension) exercises, but the plan does not indicate these accommodations.",
+          "pt": "A entrada indica osteoporose. A Tabela 3 recomenda cautela com movimentos de flexão/torção, medidas de prevenção de quedas durante o treino de equilíbrio, e exercícios posturais (extensão espinhal), mas o plano não indica estas adaptações.",
+          "ja": "入力情報から骨粗鬆症が示されています。Table3では体幹の屈曲・捻転動作への注意、バランス訓練時の転倒防止策、姿勢改善(脊柱伸展)種目が推奨されていますが、プランにはその配慮の記載が見当たりません。"
+        },
+        "insufficient_data": {
+          "en": "The input indicates osteoporosis, but the plan does not provide enough detail to determine whether these accommodations are included. Flagged for review rather than treated as a pass.",
+          "pt": "A entrada indica osteoporose, mas o plano não fornece detalhe suficiente. Assinalado para revisão.",
+          "ja": "骨粗鬆症が示されていますが、上記配慮の有無を判定するのに十分な情報がプランにありません。pass扱いにはせず、確認が必要なcautionとして扱います。"
+        },
+        "pass": {
+          "en": "The input indicates osteoporosis, and the plan indicates appropriate spinal-flexion/twisting caution, consistent with Table 3."
+        }
+      },
+      "severity": "medium",
+      "version": "1.0",
+      "last_reviewed": "2026-08-07",
+      "verification_status": "verified"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0010",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment_caution",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 3 (Joint pain or limited ROM / arthritis row); body text 'Arthritis', p.2035-2036"
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+      },
+      "condition": {
+        "type": "accommodation_check",
+        "check": "joint_pain_or_limited_rom_present == true AND rom_restricted_training_mentioned == false",
+        "parameters": {
+          "condition_fields": ["joint_pain_or_limited_rom_present"],
+          "accommodation_field": "rom_restricted_training_mentioned",
+          "accommodation_type": "boolean"
+        }
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "flagged": {
+          "en": "The input indicates joint pain or limited range of motion (e.g., arthritis). Table 3 recommends training through the pain-free part of the range of motion (e.g., using ROM-restricted machines), but the plan does not indicate this accommodation.",
+          "pt": "A entrada indica dor articular ou amplitude de movimento limitada (ex.: artrite). A Tabela 3 recomenda treinar dentro da amplitude sem dor, mas o plano não indica esta adaptação.",
+          "ja": "入力情報から関節痛または可動域制限(関節炎等)が示されています。Table3では無痛域内でのトレーニング(可動域制限マシンの使用等)が推奨されていますが、プランにはその配慮の記載が見当たりません。"
+        },
+        "insufficient_data": {
+          "en": "The input indicates joint pain or limited range of motion, but the plan does not provide enough detail to determine whether ROM-restricted training is used. Flagged for review rather than treated as a pass.",
+          "pt": "A entrada indica dor articular ou amplitude limitada, mas o plano não fornece detalhe suficiente. Assinalado para revisão.",
+          "ja": "関節痛・可動域制限が示されていますが、可動域制限を伴う配慮の有無を判定するのに十分な情報がプランにありません。pass扱いにはせず、確認が必要なcautionとして扱います。"
+        },
+        "pass": {
+          "en": "The input indicates joint pain or limited range of motion, and the plan indicates pain-free-ROM training, consistent with Table 3."
+        }
+      },
+      "severity": "low",
+      "version": "1.0",
+      "last_reviewed": "2026-08-07",
+      "verification_status": "verified"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0011",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment_caution",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 3 (Poor vision, equilibrium/balance, low-back pain, dropping weights row), p.2037",
+        "note": "Narrower/more justified than the general Table 1 modality preference (deferred as advisory-only): here the free-weight caution is tied to a specific named risk factor (fall/vision/balance/back-pain), not a blanket beginner/frailty preference."
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant", "frailty_present"]
+      },
+      "condition": {
+        "type": "accommodation_check",
+        "check": "(poor_vision_or_balance_present == true OR fall_risk_present == true OR low_back_pain_present == true) AND equipment_modality == 'free_weight_only'",
+        "parameters": {
+          "condition_fields": ["poor_vision_or_balance_present", "fall_risk_present", "low_back_pain_present"],
+          "accommodation_field": "equipment_modality",
+          "accommodation_type": "enum_exclude",
+          "excluded_value": "free_weight_only"
+        }
+      },
+      "action": "flag_caution",
+      "reason_template": {
+        "flagged": {
+          "en": "The input indicates poor vision, balance impairment, fall risk, or low-back pain. Table 3 recommends considering weight machines over free weights for this population, but the plan uses free weights exclusively.",
+          "pt": "A entrada indica visão reduzida, comprometimento do equilíbrio, risco de queda ou dor lombar. A Tabela 3 recomenda considerando máquinas em vez de pesos livres, mas o plano utiliza exclusivamente pesos livres.",
+          "ja": "入力情報から視力低下・平衡障害・転倒リスク・腰痛のいずれかが示されています。Table3ではこの対象者にフリーウェイトよりマシンの使用検討が推奨されていますが、プランはフリーウェイトのみを使用しています。"
+        },
+        "insufficient_data": {
+          "en": "The input indicates poor vision, balance impairment, fall risk, or low-back pain, but the plan does not provide enough detail to determine the equipment modality used. Flagged for review rather than treated as a pass.",
+          "pt": "A entrada indica visão reduzida, comprometimento do equilíbrio, risco de queda ou dor lombar, mas o plano não fornece detalhe suficiente sobre a modalidade de equipamento utilizada. Assinalado para revisão.",
+          "ja": "視力低下・平衡障害・転倒リスク・腰痛のいずれかが示されていますが、使用機材のモダリティを判定するのに十分な情報がプランにありません。pass扱いにはせず、確認が必要なcautionとして扱います。"
+        },
+        "pass": {
+          "en": "The input indicates poor vision, balance impairment, fall risk, or low-back pain, and the plan does not rely exclusively on free weights, consistent with Table 3."
+        }
+      },
+      "severity": "low",
+      "version": "1.0",
+      "last_reviewed": "2026-08-07",
+      "verification_status": "verified"
     }
   ],
   "ruleset_notes": {
     "verification_status_meaning": "pending_source_check = extracted by LLM, not yet manually cross-checked against the source PDF. verified = manually confirmed against source.",
     "population_classification_design": "target_population is a mutually exclusive classification, not a set of co-occurring tags. When age routes a case to older_adult_healthy (provisional threshold: age >= 65), healthy_adult_18plus (ACSM ruleset) must NOT also be set for the same case, to prevent both rulesets firing simultaneously with conflicting numeric thresholds (e.g. L1-RT-0003 vs L1-RT-NSCA-0002).",
-    "deferred_items": "Nonconsecutive-day frequency check deferred: plan_extractor has no field distinguishing consecutive vs nonconsecutive training days, so this would always resolve to null/unevaluable. Revisit if such a field is added. Exercise-count (8-10) and modality (machine vs free-weight) rules also deferred as advisory/descriptive rather than prescriptive thresholds."
+    "deferred_items": "Nonconsecutive-day frequency check deferred: plan_extractor has no field distinguishing consecutive vs nonconsecutive training days, so this would always resolve to null/unevaluable. Revisit if such a field is added. Exercise-count (8-10) and modality (machine vs free-weight) rules also deferred as advisory/descriptive rather than prescriptive thresholds.",
+    "extraction_confidence_asymmetry": "Table 3 accommodation fields (whether a plan indicates a specific safety/modification measure, e.g. blood_glucose_monitoring_mentioned, rom_restricted_training_mentioned) require semantic judgment from plan_extractor, unlike Table 1's numeric fields which are near-mechanical extraction. Because a false positive here (incorrectly marking an accommodation as present) causes the rule to incorrectly return pass -- a more dangerous failure mode than a false negative (which resolves to insufficient_data for human review) -- these fields use a stricter null-if-uncertain policy: mark true only on clear, explicit textual evidence; ambiguous or suggestive language resolves to null, not true or false."
   }
 }
