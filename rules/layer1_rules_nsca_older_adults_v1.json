@@ -1,0 +1,203 @@
+{
+  "ruleset_id": "L1-RT-NSCA2019-v1",
+  "source_document": {
+    "citation": "Fragala MS, Cadore EL, Dorgo S, Izquierdo M, Kraemer WJ, Peterson MD, Ryan ED. Resistance Training for Older Adults: Position Statement From the National Strength and Conditioning Association. J Strength Cond Res. 2019;33(8):2019-2052.",
+    "doi": "10.1519/JSC.0000000000003230"
+  },
+  "rules": [
+    {
+      "rule_id": "L1-RT-NSCA-0001",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "applicability_gate",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 1, p.2025 (page pending visual confirmation)",
+        "year": 2019,
+        "note": "Table 1 is captioned for 'healthy older adults'. The source's own study inclusion criteria used subjects aged 50 and older, but this reflects research eligibility, not a stated audit-engine age cutoff. This audit adopts age >=65 as the provisional threshold for routing to the older_adult_healthy population, following the same convention as the 4-week inactivity threshold in L1-RTT-0001 (an audit-side interpretive choice, not a source-stated figure). Frailty is handled separately in Table 2/3 of the same source and is excluded here."
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present",
+          "uncontrolled_hypertension",
+          "unstable_cardiovascular_disease"
+        ]
+      },
+      "condition": {
+        "type": "population_check",
+        "check": "positive exclusion flag in applicability.excludes; null/unknown flags do not reject"
+      },
+      "action": "route_to_layer2_or_reject",
+      "reason_template": {
+        "flagged": {
+          "en": "This ruleset is based on evidence for healthy older adults without frailty, uncontrolled hypertension, or unstable cardiovascular disease. If the target population falls outside this scope, these rules do not apply and the case should be routed to expert judgment (Layer 2) or excluded.",
+          "pt": "Este conjunto de regras baseia-se em evidências para idosos saudáveis, sem fragilidade, hipertensão não controlada ou doença cardiovascular instável. Se a população-alvo estiver fora deste âmbito, estas regras não se aplicam e o caso deve ser encaminhado para avaliação especializada (Layer 2) ou excluído.",
+          "ja": "本ルールセットは「虚弱・未管理高血圧・不安定な心血管疾患のない健康な高齢者」を対象としたエビデンスに基づいています。対象者がこの範囲外の場合、このルールセットの適用外であり、専門家の判断(Layer2)または対象外として扱う必要があります。"
+        },
+        "pass": {
+          "en": "The target population (healthy older adult, no frailty, uncontrolled hypertension, or unstable cardiovascular disease) falls within the population this ruleset is designed for."
+        }
+      },
+      "severity": "high",
+      "version": "1.0",
+      "last_reviewed": "2026-08-06",
+      "verification_status": "pending_source_check"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0002",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 1 (Sets), p.2025",
+        "note": "Overrides the general-adult minimum used in L1-RT-0003 (ACSM, min_sets=2) for this population: Table 1 explicitly recommends 1 set for beginners and older adults with frailty progressing to 2-3 sets."
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant"]
+      },
+      "condition": {
+        "type": "range_check",
+        "check": "sets_per_exercise NOT BETWEEN min_sets AND max_sets",
+        "parameters": { "min_sets": 1, "max_sets": 3 }
+      },
+      "action": "flag_suboptimal",
+      "reason_template": {
+        "flagged": {
+          "en": "For healthy older adults, Table 1 recommends 1-3 sets per exercise per muscle group (1 set for beginners, progressing to 2-3). The current setting ({observed_value}) falls outside this range.",
+          "pt": "Para idosos saudáveis, a Tabela 1 recomenda 1-3 séries por exercício por grupo muscular (1 série para iniciantes, progredindo para 2-3). A configuração atual ({observed_value}) está fora deste intervalo.",
+          "ja": "健康な高齢者の場合、Table1では1種目あたり1–3セット/筋群が推奨されています(初心者は1セットから2–3セットへ漸増)。現在の設定({observed_value})はこの範囲外です。"
+        },
+        "pass": {
+          "en": "Set volume ({observed_value} set(s)/exercise) falls within the range Table 1 recommends for healthy older adults (1-3 sets/exercise/muscle group)."
+        }
+      },
+      "severity": "low",
+      "version": "1.0",
+      "last_reviewed": "2026-08-06",
+      "verification_status": "pending_source_check"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0003",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 1 (Repetitions), p.2025"
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant"]
+      },
+      "condition": {
+        "type": "range_check",
+        "check": "repetitions_per_set NOT BETWEEN min_reps AND max_reps",
+        "parameters": { "min_reps": 6, "max_reps": 15 }
+      },
+      "action": "flag_suboptimal",
+      "reason_template": {
+        "flagged": {
+          "en": "For healthy older adults, Table 1 recommends 8-12 or 10-15 repetitions (6-12 for strength; 10-15 at lower relative resistance for beginners). The current setting ({observed_value}) falls outside the overall 6-15 range these recommendations span.",
+          "pt": "Para idosos saudáveis, a Tabela 1 recomenda 8-12 ou 10-15 repetições (6-12 para força; 10-15 com resistência relativa mais baixa para iniciantes). A configuração atual ({observed_value}) está fora do intervalo global de 6-15 abrangido por estas recomendações.",
+          "ja": "健康な高齢者の場合、Table1では8–12回または10–15回(筋力向上目的は6–12回、初心者は低負荷で10–15回)が推奨されています。現在の設定({observed_value})はこれらを包含する6–15回の範囲外です。"
+        },
+        "pass": {
+          "en": "Repetitions per set ({observed_value}) fall within the 6-15 range Table 1 recommends for healthy older adults."
+        }
+      },
+      "severity": "low",
+      "version": "1.0",
+      "last_reviewed": "2026-08-06",
+      "verification_status": "pending_source_check"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0004",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 1 (Intensity), p.2025",
+        "note": "Table 1 states loads should begin at a tolerated resistance and progress via periodization toward 70-85% 1RM; lighter loads are explicitly recommended for beginners, frailty, CVD, or osteoporosis. This rule therefore only flags established/progressed programs, not initial-phase or explicitly caveated cases."
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "goal": "strength",
+        "excludes": [
+          "injury_present", "post_surgical", "pain_present", "minor", "pregnant",
+          "true_beginner_first_weeks", "frailty_present",
+          "cardiovascular_disease_present", "osteoporosis_present"
+        ]
+      },
+      "condition": {
+        "type": "range_check",
+        "check": "load_percent_1RM NOT BETWEEN min_intensity AND max_intensity",
+        "parameters": { "min_intensity": 70, "max_intensity": 85 }
+      },
+      "action": "flag_suboptimal",
+      "reason_template": {
+        "flagged": {
+          "en": "For strength goals in healthy older adults without frailty, CVD, or osteoporosis, Table 1 recommends progressing to 70-85% 1RM. The current setting ({observed_value}% 1RM) falls outside this range. Note that beginners and those with frailty, CVD, or osteoporosis should use lighter loads and progress more gradually.",
+          "pt": "Para objetivos de força em idosos saudáveis, sem fragilidade, doença cardiovascular ou osteoporose, a Tabela 1 recomenda progredir para 70-85% de 1RM. A configuração atual ({observed_value}% de 1RM) está fora deste intervalo. Note que iniciantes e pessoas com fragilidade, doença cardiovascular ou osteoporose devem usar cargas mais leves e progredir mais gradualmente.",
+          "ja": "虚弱・心血管疾患・骨粗鬆症のない健康な高齢者の筋力向上目的の場合、Table1では70–85%1RMへの漸進が推奨されています。現在の設定({observed_value}%1RM)はこの範囲外です。ただし初心者、虚弱・心血管疾患・骨粗鬆症のある方はより低負荷から、より緩やかに漸進すべき点に注意してください。"
+        },
+        "pass": {
+          "en": "For a strength goal, the prescribed load ({observed_value}% 1RM) falls within the 70-85% 1RM range Table 1 recommends for healthy older adults."
+        }
+      },
+      "severity": "low",
+      "version": "1.0",
+      "last_reviewed": "2026-08-06",
+      "verification_status": "pending_source_check"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0005",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 1 (Power/explosive training), p.2025",
+        "note": "Narrower than the general-adult power range in L1-RT-0006 (ACSM, 30-70% 1RM). This value (40-60%) is repeated consistently in the body text for older adults (e.g. p.2023), not just the table, so confidence in this figure is high."
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "goal": "power",
+        "excludes": ["injury_present", "post_surgical", "pain_present", "minor", "pregnant"]
+      },
+      "condition": {
+        "type": "range_check",
+        "check": "load_percent_1RM NOT BETWEEN min_power_load AND max_power_load",
+        "parameters": { "min_power_load": 40, "max_power_load": 60 }
+      },
+      "action": "flag_suboptimal",
+      "reason_template": {
+        "flagged": {
+          "en": "For power/explosive training in healthy older adults, Table 1 recommends moderate loads of 40-60% 1RM performed at high concentric velocity. The current setting ({observed_value}% 1RM) falls outside this range.",
+          "pt": "Para treino de potência/explosivo em idosos saudáveis, a Tabela 1 recomenda cargas moderadas de 40-60% de 1RM executadas com alta velocidade concêntrica. A configuração atual ({observed_value}% de 1RM) está fora deste intervalo.",
+          "ja": "健康な高齢者のパワー/爆発的トレーニングの場合、Table1では40–60%1RMの中負荷を高い求心性速度で行うことが推奨されています。現在の設定({observed_value}%1RM)はこの範囲外です。"
+        },
+        "pass": {
+          "en": "For a power goal, the prescribed load ({observed_value}% 1RM) falls within the 40-60% 1RM range Table 1 recommends for healthy older adults."
+        }
+      },
+      "severity": "low",
+      "version": "1.0",
+      "last_reviewed": "2026-08-06",
+      "verification_status": "pending_source_check"
+    }
+  ],
+  "ruleset_notes": {
+    "verification_status_meaning": "pending_source_check = extracted by LLM, not yet manually cross-checked against the source PDF. verified = manually confirmed against source.",
+    "population_classification_design": "target_population is a mutually exclusive classification, not a set of co-occurring tags. When age routes a case to older_adult_healthy (provisional threshold: age >= 65), healthy_adult_18plus (ACSM ruleset) must NOT also be set for the same case, to prevent both rulesets firing simultaneously with conflicting numeric thresholds (e.g. L1-RT-0003 vs L1-RT-NSCA-0002).",
+    "deferred_items": "Nonconsecutive-day frequency check deferred: plan_extractor has no field distinguishing consecutive vs nonconsecutive training days, so this would always resolve to null/unevaluable. Revisit if such a field is added. Exercise-count (8-10) and modality (machine vs free-weight) rules also deferred as advisory/descriptive rather than prescriptive thresholds."
+  }
+}

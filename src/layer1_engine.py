@@ -16,6 +16,7 @@ RULES_DIR = Path(__file__).resolve().parent.parent / "rules"
 DEFAULT_RULESET_FILES = (
     "layer1_rules_acsm_rt_v1.json",
     "layer1_rules_cscca_return_to_training_v1.json",
+    "layer1_rules_nsca_older_adults_v1.json",
 )
 
 # Only these rule_ids are evaluated. Add IDs here to activate future rules.
@@ -56,8 +57,39 @@ ACTIVE_RULE_IDS = frozenset(
         "L1-RTT-0006",
         # Relative load/volume caution (qualitative signal; not numeric compliance)
         "L1-RTT-0011",
+        # NSCA older adults Table 1 (healthy older adults)
+        "L1-RT-NSCA-0001",
+        "L1-RT-NSCA-0002",
+        "L1-RT-NSCA-0003",
+        "L1-RT-NSCA-0004",
+        "L1-RT-NSCA-0005",
     }
 )
+
+# Mutually exclusive primary population classes (not co-occurring tags).
+_PRIMARY_POPULATIONS = frozenset({"healthy_adult_18plus", "older_adult_healthy"})
+
+# Provisional audit-side age cutoff for older_adult_healthy routing.
+# Not a source-stated figure (same convention as the 4-week threshold in L1-RTT-0001).
+_OLDER_ADULT_AGE_THRESHOLD_YEARS = 65
+
+# Boolean population-exclusion flags that may appear in applicability.excludes.
+_EXCLUSION_BOOLEAN_FLAGS = frozenset(
+    {
+        "injury_present",
+        "post_surgical",
+        "pain_present",
+        "minor",
+        "pregnant",
+        "frailty_present",
+        "uncontrolled_hypertension",
+        "unstable_cardiovascular_disease",
+        "cardiovascular_disease_present",
+        "osteoporosis_present",
+        "true_beginner_first_weeks",
+    }
+)
+
 
 DEFAULT_RULES_PATH = RULES_DIR / "layer1_rules_acsm_rt_v1.json"
 
@@ -125,13 +157,7 @@ def _plan_exclusion_tags(plan: dict) -> set[str]:
     if isinstance(experience, str):
         tags.add(experience)
     # Boolean exclusion flags from plan_extractor / structured plans.
-    for flag in (
-        "injury_present",
-        "post_surgical",
-        "pain_present",
-        "minor",
-        "pregnant",
-    ):
+    for flag in _EXCLUSION_BOOLEAN_FLAGS:
         if plan.get(flag) is True:
             tags.add(flag)
     for key in ("excludes", "flags", "attributes"):
@@ -141,6 +167,38 @@ def _plan_exclusion_tags(plan: dict) -> set[str]:
         elif isinstance(value, str):
             tags.add(value)
     return tags
+
+
+def effective_target_population(plan: dict) -> str:
+    """Return the mutually exclusive primary population class for this plan.
+
+    Routing rules (audit-side design, not source-stated cutoffs):
+      - age_years >= 65 → older_adult_healthy only
+        (provisional threshold; Fragala et al. study inclusion used 50+, but
+        that is research eligibility, not an audit cutoff — same convention as
+        the 4-week inactivity threshold in L1-RTT-0001)
+      - age_years < 65 → healthy_adult_18plus only
+      - age_years is null → default to healthy_adult_18plus so existing plans
+        without age continue under the ACSM general-adult ruleset; NSCA older-
+        adult rules do not apply until age is known
+    Explicit ``target_population`` is overridden when age_years is present so
+    age-based exclusivity cannot be bypassed by a stale tag.
+    """
+    age = plan.get("age_years")
+    if age is not None:
+        try:
+            age_n = int(age)
+        except (TypeError, ValueError):
+            age_n = None
+        if age_n is not None:
+            if age_n >= _OLDER_ADULT_AGE_THRESHOLD_YEARS:
+                return "older_adult_healthy"
+            return "healthy_adult_18plus"
+
+    target = plan.get("target_population")
+    if isinstance(target, str) and target in _PRIMARY_POPULATIONS:
+        return target
+    return "healthy_adult_18plus"
 
 
 def _is_long_inactivity_context(plan: dict) -> bool:
@@ -181,6 +239,10 @@ def _rule_applies(rule: dict, plan: dict) -> bool:
             return False
 
     population = applicability.get("population") or []
+    # Mutually exclusive primary classes: ACSM general-adult vs NSCA older-adult.
+    primary = _PRIMARY_POPULATIONS & set(population)
+    if primary and effective_target_population(plan) not in primary:
+        return False
     # Rules tagged for long_inactivity only apply in that return context.
     if "long_inactivity" in population and not _is_long_inactivity_context(plan):
         return False
@@ -879,15 +941,7 @@ def _primary_metric_field(condition: dict) -> str | None:
 
 
 # Boolean population-exclusion flags that may appear in applicability.excludes.
-_EXCLUSION_BOOLEAN_FLAGS = frozenset(
-    {
-        "injury_present",
-        "post_surgical",
-        "pain_present",
-        "minor",
-        "pregnant",
-    }
-)
+# (Canonical set is defined near ACTIVE_RULE_IDS; kept here only as a comment anchor.)
 
 
 def _condition_is_evaluable(condition: dict, plan: dict, rule: dict) -> bool:
@@ -1006,13 +1060,22 @@ def _build_pass_parameters(rule: dict, plan: dict) -> dict | None:
     return out
 
 
+def _population_gate_in_scope(rule: dict, plan: dict) -> bool:
+    """Whether this applicability gate belongs to the plan's primary population."""
+    population = set((rule.get("applicability") or {}).get("population") or [])
+    primary = _PRIMARY_POPULATIONS & population
+    if not primary:
+        return True
+    return effective_target_population(plan) in primary
+
+
 def _rule_in_evaluation_scope(rule: dict, plan: dict) -> bool:
     """Whether this active rule's applicability / week gate covers the plan."""
     condition = rule.get("condition") or {}
     cond_type = condition.get("type")
 
     if _is_population_gate(rule):
-        return True
+        return _population_gate_in_scope(rule, plan)
 
     if cond_type == "context_gate":
         return _context_gate_in_scope(condition, plan)
@@ -1052,6 +1115,16 @@ def evaluate_layer1_detailed(
     else:
         data = load_merged_rulesets()
 
+    # Normalize exclusive primary population from age when known.
+    # Do not overwrite exclusion labels such as ``pregnant`` / ``minor`` that
+    # older fixtures store in ``target_population``.
+    plan = dict(plan)
+    raw_target = plan.get("target_population")
+    if plan.get("age_years") is not None or raw_target is None or (
+        isinstance(raw_target, str) and raw_target in _PRIMARY_POPULATIONS
+    ):
+        plan["target_population"] = effective_target_population(plan)
+
     rules: list[dict] = [
         r for r in (data.get("rules") or []) if r.get("rule_id") in ACTIVE_RULE_IDS
     ]
@@ -1066,6 +1139,8 @@ def evaluate_layer1_detailed(
     applicable: list[dict] = []
 
     for rule in population_gates:
+        if not _population_gate_in_scope(rule, plan):
+            continue
         condition = rule.get("condition") or {}
         if not _condition_is_evaluable(condition, plan, rule):
             continue

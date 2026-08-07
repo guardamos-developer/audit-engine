@@ -62,6 +62,8 @@ _PLAN_FIELD_SPECS: dict[str, dict[str, Any]] = {
     "rest_days_per_week": {"json_type": ["integer", "null"]},
     "frequency_days_per_week": {"json_type": ["integer", "null"]},
     "reps": {"json_type": ["string", "null"]},
+    "repetitions_per_set": {"json_type": ["integer", "null"]},
+    "age_years": {"json_type": ["integer", "null"]},
     "inactivity_duration_weeks": {"json_type": ["integer", "null"]},
     "weeks_since_return": {"json_type": ["integer", "null"]},
     "program_mandates_training_to_failure": {"json_type": ["boolean", "null"]},
@@ -81,6 +83,12 @@ _PLAN_FIELD_SPECS: dict[str, dict[str, Any]] = {
     "pain_present": {"json_type": ["boolean", "null"]},
     "minor": {"json_type": ["boolean", "null"]},
     "true_beginner_first_weeks": {"json_type": ["boolean", "null"]},
+    # NSCA older-adult Table 1 exclusion / intensity caveats
+    "frailty_present": {"json_type": ["boolean", "null"]},
+    "uncontrolled_hypertension": {"json_type": ["boolean", "null"]},
+    "unstable_cardiovascular_disease": {"json_type": ["boolean", "null"]},
+    "cardiovascular_disease_present": {"json_type": ["boolean", "null"]},
+    "osteoporosis_present": {"json_type": ["boolean", "null"]},
     # CSCCa FIT / rhabdo / medical clearance (L1-RTT-0003–0006)
     "plan_uses_FIT_rule_IRV_as_primary_constraint": {"json_type": ["boolean", "null"]},
     "work_rest_ratio_denominator": {"json_type": ["integer", "null"]},
@@ -110,6 +118,11 @@ EXCLUSION_FLAG_FIELDS = frozenset(
         "pain_present",
         "minor",
         "true_beginner_first_weeks",
+        "frailty_present",
+        "uncontrolled_hypertension",
+        "unstable_cardiovascular_disease",
+        "cardiovascular_disease_present",
+        "osteoporosis_present",
     }
 )
 
@@ -129,12 +142,21 @@ Rules (mandatory):
 4. Contextual signals (injury, pregnancy, age under 18, post-surgical status,
    long inactivity) often appear in the user_prompt — read both texts.
 5. For boolean exclusion flags (injury_present, pregnant, post_surgical,
-   pain_present, minor, true_beginner_first_weeks): set true only when the text
-   clearly states that condition; otherwise null (not false) unless the text
-   explicitly denies it.
+   pain_present, minor, true_beginner_first_weeks, frailty_present,
+   uncontrolled_hypertension, unstable_cardiovascular_disease,
+   cardiovascular_disease_present, osteoporosis_present): set true only when
+   the text clearly states that condition; otherwise null (not false) unless
+   the text explicitly denies it.
 6. inactivity_duration_weeks: convert clear durations (e.g. "six months",
    "4.5 months") to an integer week estimate only when the text supports it;
    otherwise null.
+6b. age_years: integer age in years only when the text clearly states age
+   (e.g. "I am 68", "72-year-old"). Do not guess. Leave null when unknown.
+6c. repetitions_per_set: integer reps per set only when a clear single number
+   or a tight range that resolves to one representative integer is stated
+   (e.g. "10 reps" → 10). Prefer the midpoint of a narrow range only when both
+   bounds are explicit integers; otherwise null. Do not invent from vague
+   language. The free-text reps field may still hold the raw string.
 7. goal: do NOT copy the user's wording verbatim. Classify into the closest of
    ["strength", "hypertrophy", "power", "general"]. If none fits, leave null.
 8. program_mandates_training_to_failure:
