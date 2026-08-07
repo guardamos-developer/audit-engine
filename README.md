@@ -42,12 +42,27 @@ def audit_plan(user_prompt: str, ai_response: str) -> dict:
     response = requests.post(
         "https://guardamos-audit-engine.onrender.com/audit",
         headers={"X-API-Key": GUARDAMOS_API_KEY},
-        json={"user_prompt": user_prompt, "ai_response": ai_response},
+        json={
+            "user_prompt": user_prompt,
+            "ai_response": ai_response,
+            # skip_layer3 defaults to true on the hosted API: Layer3 (LLM
+            # narrative) is skipped. Deterministic checked_facts still return
+            # on pass. Set false only if you also want layer3_response
+            # (extra OpenAI call and latency).
+            # "skip_layer3": False,
+        },
         timeout=10,
     )
     response.raise_for_status()
     return response.json()
 ```
+
+**Request body notes:** `lang` is `en` | `pt` | `ja` (default `en`).
+`skip_layer3` defaults to **`true`**. That does **not** drop
+`checked_facts` on pass — those are deterministic Layer1-B facts. It only
+skips the optional LLM `layer3_response`. Omit the field or leave it `true`
+for lower latency; set `"skip_layer3": false` when you want the Layer3
+narrative.
 
 See [`examples/integration_example.py`](examples/integration_example.py)
 for a complete, runnable version, including error handling for when the

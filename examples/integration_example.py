@@ -61,7 +61,13 @@ def audit_plan(
         response = requests.post(
             AUDIT_URL,
             headers={"X-API-Key": key},
-            json={"user_prompt": user_prompt, "ai_response": ai_response},
+            json={
+                "user_prompt": user_prompt,
+                "ai_response": ai_response,
+                # Hosted API default is skip_layer3=true (omit Layer3 LLM call).
+                # Pass still returns deterministic checked_facts; set false for
+                # layer3_response as well (extra latency / OpenAI cost).
+            },
             timeout=timeout,
         )
     except requests.Timeout as exc:

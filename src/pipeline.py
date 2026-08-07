@@ -102,7 +102,21 @@ def run_raw_text_pipeline(
           "extraction": <Extraction section payload>,
           "audit": <Audit section payload>,
         }
+
+    Timing metadata is attached under ``audit["_timing"]`` for the HTTP layer
+    to log; callers that serialize the audit payload for clients should strip
+    underscore-prefixed keys if desired (the API does this).
     """
+    from time import perf_counter
+
+    from .layer1_engine import (
+        apply_deterministic_age_derived_flags,
+        effective_target_population,
+    )
+    from .request_log import ms_since
+
+    pipeline_t0 = perf_counter()
+
     injection_hits = detect_injection_patterns(user_prompt) + detect_injection_patterns(
         ai_response
     )
@@ -113,7 +127,10 @@ def run_raw_text_pipeline(
             seen.add(phrase)
             injection_warning.append(phrase)
 
+    extraction_t0 = perf_counter()
     extraction = extract_plan(user_prompt, ai_response)
+    extraction_ms = ms_since(extraction_t0)
+
     result = run_audit(
         extraction["plan"],
         lang=lang,
@@ -122,6 +139,13 @@ def run_raw_text_pipeline(
     result = _apply_raw_text_verdict_overrides(
         result, extraction, injection_warning, lang=lang
     )
+
+    routed_plan = apply_deterministic_age_derived_flags(dict(extraction.get("plan") or {}))
+    audit_timing = dict(result.get("_timing") or {})
+    audit_timing["extraction_ms"] = extraction_ms
+    audit_timing["pipeline_latency_ms"] = ms_since(pipeline_t0)
+    audit_timing["effective_population"] = effective_target_population(routed_plan)
+    result["_timing"] = audit_timing
 
     return {
         "extraction": _format_extraction_payload(extraction),

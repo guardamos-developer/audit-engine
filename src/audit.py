@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 from .explanation import render_explanation
@@ -10,6 +11,7 @@ from .layer1_engine import evaluate_layer1_detailed, load_merged_rulesets, load_
 from .layer1b_synthesizer import collect_applicable_facts
 from .layer2_stub import evaluate_layer2
 from .layer3_generator import generate_layer3_response
+from .request_log import ms_since
 
 REJECT_ACTIONS = frozenset({"route_to_layer2_or_reject", "reject"})
 
@@ -204,15 +206,18 @@ def run_audit(
     )
 
     layer3_response = None
+    layer3_ms: int | None = None
     layer3_verdict = _verdict_for_layer3(verdict)
     # Layer1-B + Layer3 only on clear/pass; never for flagged/rejected/insufficient.
     if layer3_verdict == "clear" and not skip_layer3:
+        t0 = perf_counter()
         layer3_response = (
             generate_layer3_response(
                 plan, layer3_verdict, checked_facts=checked_facts
             )
             or None
         )
+        layer3_ms = ms_since(t0)
 
     matched_rule_ids = [m["rule_id"] for m in all_matches]
     pass_facts = checked_facts if verdict == "pass" else []
@@ -226,4 +231,7 @@ def run_audit(
         "checked_facts": pass_facts,
         "layer3_response": layer3_response,
         "ruleset_version": ruleset_version,
+        "_timing": {
+            "layer3_ms": layer3_ms,
+        },
     }

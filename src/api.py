@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import secrets
+from time import perf_counter
 from typing import Any
 
 import httpx
@@ -17,6 +18,13 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 from .pipeline import run_raw_text_pipeline
+from .request_log import (
+    build_request_log_record,
+    emit_request_log,
+    hash_api_key,
+    ms_since,
+    resolve_ruleset_ids,
+)
 
 load_dotenv()
 
@@ -86,11 +94,28 @@ def validate_api_key_via_billing(api_key: str) -> bool:
     return bool(payload.get("valid"))
 
 
+def _client_facing_payload(pipeline_result: dict[str, Any]) -> dict[str, Any]:
+    """Drop internal underscore-prefixed keys (e.g. timing) from the audit body."""
+    audit = dict(pipeline_result.get("audit") or {})
+    audit = {k: v for k, v in audit.items() if not str(k).startswith("_")}
+    return {
+        "extraction": pipeline_result.get("extraction"),
+        "audit": audit,
+    }
+
+
 class AuditRequest(BaseModel):
     user_prompt: str = Field(..., min_length=1)
     ai_response: str = Field(..., min_length=1)
     lang: str = Field(default="en", pattern="^(en|pt|ja)$")
-    skip_layer3: bool = True
+    skip_layer3: bool = Field(
+        default=True,
+        description=(
+            "When true (the API default), skip the Layer3 LLM summary call even "
+            "on pass. Deterministic checked_facts are still returned on pass. "
+            "Set false to also generate layer3_response (extra OpenAI call / latency)."
+        ),
+    )
 
 
 @app.get("/health")
@@ -123,20 +148,36 @@ def audit(
     """Run the same pipeline as ``main.py --raw-text``.
 
     Requires a valid ``X-API-Key`` issued by the billing service.
+
+    ``skip_layer3`` defaults to **true**: Layer3 (LLM narrative on pass) is not
+    called unless the client sets ``skip_layer3: false``. Pass responses still
+    include deterministic ``checked_facts``; only ``layer3_response`` is omitted
+    when skipped.
     """
-    if not x_api_key or not validate_api_key_via_billing(x_api_key):
-        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    total_t0 = perf_counter()
+    billing_ms: int | None = None
+    pipeline_result: dict[str, Any] | None = None
+    key_hash = hash_api_key(x_api_key) if x_api_key else hash_api_key("")
 
     try:
-        return run_raw_text_pipeline(
+        billing_t0 = perf_counter()
+        valid = bool(x_api_key) and validate_api_key_via_billing(x_api_key)
+        billing_ms = ms_since(billing_t0)
+        if not valid:
+            raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+        pipeline_result = run_raw_text_pipeline(
             body.user_prompt,
             body.ai_response,
             lang=body.lang,
             skip_layer3=body.skip_layer3,
         )
+        return _client_facing_payload(pipeline_result)
     except OSError as exc:
         # Includes EnvironmentError when OPENAI_API_KEY is missing.
         raise HTTPException(status_code=503, detail=str(exc)) from None
+    except HTTPException:
+        raise
     except Exception as exc:
         # Surface OpenAI auth / API failures instead of a bare 500.
         name = type(exc).__name__
@@ -153,3 +194,37 @@ def audit(
                 detail=f"OpenAI request failed ({name}): {exc}",
             ) from None
         raise
+    finally:
+        # Always emit a metering line for authenticated attempts that reached
+        # validation; include failures after a valid key when possible.
+        audit_body = (pipeline_result or {}).get("audit") or {}
+        timing = audit_body.get("_timing") or {}
+        try:
+            pipeline_ms = int(
+                timing.get("pipeline_latency_ms")
+                if timing.get("pipeline_latency_ms") is not None
+                else 0
+            )
+            total_ms = ms_since(total_t0)
+            # Wall clock can round to 0ms in tests; keep totals coherent.
+            bill = int(billing_ms or 0)
+            total_ms = max(total_ms, pipeline_ms + bill)
+            emit_request_log(
+                build_request_log_record(
+                    api_key_hash=key_hash,
+                    verdict=audit_body.get("verdict"),
+                    ruleset_ids=resolve_ruleset_ids(
+                        effective_population=timing.get("effective_population"),
+                        matched_rules=audit_body.get("matched_rules"),
+                    ),
+                    total_latency_ms=total_ms,
+                    pipeline_latency_ms=pipeline_ms if pipeline_result else total_ms,
+                    billing_validate_ms=billing_ms,
+                    extraction_ms=timing.get("extraction_ms"),
+                    layer3_ms=timing.get("layer3_ms"),
+                    skip_layer3=body.skip_layer3,
+                )
+            )
+        except Exception:
+            # Logging must never break the request path.
+            pass
