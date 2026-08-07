@@ -154,3 +154,5 @@ to gate what an end user sees before a response is shown to them.
 ## License
 
 MIT — see [LICENSE](./LICENSE).
+
+<!-- deploy-check: 2026-08-07 verifying Render auto-deploy after GitHub App reinstall -->
