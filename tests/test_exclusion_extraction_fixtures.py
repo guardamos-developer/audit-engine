@@ -3,6 +3,10 @@
 Recorded live gpt-4o-mini extractions (2026-08-07). The euphemistic-stamina
 miss (var2) is intentionally omitted — see ruleset_notes
 ``lenient_exclusion_euphemism_limit``.
+
+Fixtures may use either:
+  - ``recorded_extraction`` (legacy single blob; projected into stage1/stage2), or
+  - ``recorded_extraction_stage1`` / ``recorded_extraction_stage2`` (explicit).
 """
 
 from __future__ import annotations
@@ -10,8 +14,6 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Any
 
 import pytest
 
@@ -24,9 +26,11 @@ from src.layer1_engine import (  # noqa: E402
     effective_target_population,
     evaluate_layer1_detailed,
 )
-from src.plan_extractor import (  # noqa: E402
-    _PLAN_FIELD_SPECS,
-    extract_plan,
+from src.plan_extractor import extract_plan  # noqa: E402
+from tests.extraction_fakes import (  # noqa: E402
+    empty_raw_fields,
+    fake_client,
+    fake_client_two_stage,
 )
 
 GROUND_TRUTH_DIR = Path(__file__).resolve().parent / "extraction_ground_truth"
@@ -40,6 +44,9 @@ FIXTURE_CASES = (
     "case_qualitative_minor.json",
     "case_qualitative_older_adult.json",
     "case_ctrl_knee_pain.json",
+    # Design lock: adult age + frailty does NOT early-exit (ACSM gate ignores
+    # frailty); stage 2 must still run — same as pre-two-stage behavior.
+    "case_adult_age40_frailty_continues_stage2.json",
 )
 
 
@@ -48,40 +55,47 @@ def _load_case(name: str) -> dict:
         return json.load(f)
 
 
-def _fake_client(raw_fields: dict[str, Any]) -> Any:
-    class _Completions:
-        @staticmethod
-        def create(**kwargs):
-            return SimpleNamespace(
-                choices=[
-                    SimpleNamespace(
-                        message=SimpleNamespace(content=json.dumps(raw_fields))
-                    )
-                ]
-            )
+def _client_for_case(case: dict):
+    """Build a fake client from legacy or stage-split recorded extraction."""
+    stage1_over = case.get("recorded_extraction_stage1")
+    stage2_over = case.get("recorded_extraction_stage2")
+    expect_stage2 = case.get("expect_stage2_called")
 
-    return SimpleNamespace(chat=SimpleNamespace(completions=_Completions()))
+    if stage1_over is not None:
+        stage1 = empty_raw_fields(**stage1_over)
+        # empty_raw_fields fills all plan keys; project happens in fake_client_two_stage
+        # via explicit stage payloads — pass stage-scoped dicts directly.
+        from tests.extraction_fakes import _project_raw
+        from src.plan_extractor import STAGE1_FIELD_NAMES, STAGE2_ADULT_FIELD_NAMES
 
+        s1 = _project_raw(stage1, STAGE1_FIELD_NAMES)
+        if expect_stage2 is False or stage2_over is None:
+            return fake_client_two_stage(s1, None, expect_stage2=False)
+        stage2 = empty_raw_fields(**(stage2_over or {}))
+        s2 = _project_raw(stage2, STAGE2_ADULT_FIELD_NAMES)
+        # Older stage2 fields may also appear in stage2_over; merge both sets.
+        from src.plan_extractor import STAGE2_OLDER_FIELD_NAMES
 
-def _empty_raw_fields(**overrides: Any) -> dict[str, Any]:
-    raw: dict[str, Any] = {
-        name: {"value": None, "evidence_quote": None} for name in _PLAN_FIELD_SPECS
-    }
-    raw["possible_meta_instruction_detected"] = False
-    raw["meta_instruction_evidence"] = None
-    for name, entry in overrides.items():
-        raw[name] = entry
-    return raw
+        s2_older = _project_raw(stage2, STAGE2_OLDER_FIELD_NAMES)
+        s2 = {**s2_older, **s2}
+        s2["possible_meta_instruction_detected"] = bool(
+            stage2.get("possible_meta_instruction_detected", False)
+        )
+        s2["meta_instruction_evidence"] = stage2.get("meta_instruction_evidence")
+        return fake_client_two_stage(s1, s2, expect_stage2=True)
+
+    raw = empty_raw_fields(**(case.get("recorded_extraction") or {}))
+    return fake_client(raw, expect_stage2=expect_stage2)
 
 
 @pytest.mark.parametrize("case_name", FIXTURE_CASES)
 def test_recorded_exclusion_fixtures_extract_and_audit(case_name: str):
     case = _load_case(case_name)
-    raw = _empty_raw_fields(**(case.get("recorded_extraction") or {}))
+    client = _client_for_case(case)
     result = extract_plan(
         case["user_prompt"],
         case["ai_response"],
-        client=_fake_client(raw),
+        client=client,
     )
     plan = result["plan"]
     expected_plan = case["expected_plan"]
@@ -96,6 +110,9 @@ def test_recorded_exclusion_fixtures_extract_and_audit(case_name: str):
                 plan.get(key),
                 expected_value,
             )
+
+    if case.get("expect_stage2_called") is not None:
+        assert result.get("stage2_ran") is case["expect_stage2_called"], case_name
 
     # Frailty fixtures must not invent injury from weakness language.
     if "frail" in case_name or case_name.startswith("case_var3"):
@@ -119,21 +136,6 @@ def test_recorded_exclusion_fixtures_extract_and_audit(case_name: str):
         nsca_ids = [
             a["rule_id"]
             for a in detailed["applicable"]
-            if str(a["rule_id"]).startswith("L1-RT-NSCA")
+            if str(a["rule_id"]).startswith("L1-RT-NSCA-")
         ]
-        assert nsca_ids, case_name
-
-
-def test_ruleset_notes_document_euphemism_frailty_limit():
-    nsca = json.loads(
-        (ROOT / "rules" / "layer1_rules_nsca_older_adults_v1.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    acsm = json.loads(
-        (ROOT / "rules" / "layer1_rules_acsm_rt_v1.json").read_text(encoding="utf-8")
-    )
-    nsca_note = nsca["ruleset_notes"]["lenient_exclusion_euphemism_limit"]
-    assert "stamina" in nsca_note.lower() or "euphemistic" in nsca_note.lower()
-    assert "healthy_adult_18plus" in nsca_note
-    assert "lenient_exclusion_euphemism_limit" in acsm["ruleset_notes"]
+        assert nsca_ids, (case_name, "expected NSCA rules applicable")

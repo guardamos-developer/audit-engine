@@ -1240,36 +1240,18 @@ def _rule_in_evaluation_scope(rule: dict, plan: dict) -> bool:
     return True
 
 
-def evaluate_layer1_detailed(
-    plan: dict,
-    rules_path: str | Path | None = None,
-    ruleset: dict | None = None,
-) -> dict[str, list[dict]]:
-    """Evaluate Layer1 and return both violations and in-scope rules.
-
-    Returns:
-      {
-        "matched": [violation match dicts...],
-        "applicable": [in-scope rule dicts with violated/pass_parameters...],
-      }
-    """
-    if ruleset is not None:
-        data = ruleset
-    elif rules_path is not None:
-        data = load_ruleset(rules_path)
-    else:
-        data = load_merged_rulesets()
-
-    # Normalize exclusive primary population from age when known.
-    # Do not overwrite exclusion labels such as ``pregnant`` / ``minor`` that
-    # older fixtures store in ``target_population`` — unless age_years or
-    # stated_age_category drives exclusivity (rewrite primary class only).
+def _prepare_plan_for_layer1(plan: dict) -> dict:
+    """Copy plan, apply Zone-B age flags, and normalize primary population."""
     plan = dict(plan)
     # Deterministic age→minor before gates: age_years < 18 or
     # stated_age_category == "minor" forces minor=True.
     plan = apply_deterministic_age_derived_flags(plan)
     raw_target = plan.get("target_population")
     category = plan.get("stated_age_category")
+    # Normalize exclusive primary population from age when known.
+    # Do not overwrite exclusion labels such as ``pregnant`` / ``minor`` that
+    # older fixtures store in ``target_population`` — unless age_years or
+    # stated_age_category drives exclusivity (rewrite primary class only).
     if (
         plan.get("age_years") is not None
         or category in ("minor", "older_adult", "adult")
@@ -1277,20 +1259,48 @@ def evaluate_layer1_detailed(
         or (isinstance(raw_target, str) and raw_target in _PRIMARY_POPULATIONS)
     ):
         plan["target_population"] = effective_target_population(plan)
+    return plan
 
+
+def _resolve_layer1_ruleset(
+    rules_path: str | Path | None = None,
+    ruleset: dict | None = None,
+) -> dict[str, Any]:
+    if ruleset is not None:
+        return ruleset
+    if rules_path is not None:
+        return load_ruleset(rules_path)
+    return load_merged_rulesets()
+
+
+def evaluate_primary_population_gates(
+    plan: dict,
+    rules_path: str | Path | None = None,
+    ruleset: dict | None = None,
+) -> dict[str, Any]:
+    """Evaluate only in-scope primary population gates (L1-RT-0001 / NSCA-0001).
+
+    Used by the two-stage extraction pipeline to decide whether stage 2 can be
+    skipped. Does not run context gates or metric rules.
+
+    Returns::
+
+        {
+          "rejected": bool,  # True when an in-scope gate matched (out-of-scope)
+          "matched": [violation match dicts...],
+          "applicable": [gate applicable-result dicts...],
+          "effective_population": str,
+          "plan": <normalized plan dict used for evaluation>,
+        }
+    """
+    data = _resolve_layer1_ruleset(rules_path=rules_path, ruleset=ruleset)
+    plan = _prepare_plan_for_layer1(plan)
     rules: list[dict] = [
         r for r in (data.get("rules") or []) if r.get("rule_id") in ACTIVE_RULE_IDS
     ]
-
     population_gates = [r for r in rules if _is_population_gate(r)]
-    context_gates = [r for r in rules if _is_context_gate(r) and not _is_population_gate(r)]
-    other_rules = [
-        r for r in rules if not _is_population_gate(r) and not _is_context_gate(r)
-    ]
 
-    matched: list[dict] = []
     applicable: list[dict] = []
-
     for rule in population_gates:
         if not _population_gate_in_scope(rule, plan):
             continue
@@ -1308,11 +1318,61 @@ def evaluate_layer1_detailed(
             )
         )
         if hit:
-            # Out-of-scope population: short-circuit remaining Layer1 rules.
             return {
+                "rejected": True,
                 "matched": [_match_result(rule, matched_parameters)],
                 "applicable": applicable,
+                "effective_population": effective_target_population(plan),
+                "plan": plan,
             }
+
+    return {
+        "rejected": False,
+        "matched": [],
+        "applicable": applicable,
+        "effective_population": effective_target_population(plan),
+        "plan": plan,
+    }
+
+
+def evaluate_layer1_detailed(
+    plan: dict,
+    rules_path: str | Path | None = None,
+    ruleset: dict | None = None,
+) -> dict[str, list[dict]]:
+    """Evaluate Layer1 and return both violations and in-scope rules.
+
+    Returns:
+      {
+        "matched": [violation match dicts...],
+        "applicable": [in-scope rule dicts with violated/pass_parameters...],
+      }
+    """
+    data = _resolve_layer1_ruleset(rules_path=rules_path, ruleset=ruleset)
+    gate = evaluate_primary_population_gates(
+        plan, rules_path=rules_path, ruleset=data
+    )
+    plan = gate["plan"]
+    applicable: list[dict] = list(gate["applicable"])
+
+    if gate["rejected"]:
+        # Out-of-scope population: short-circuit remaining Layer1 rules.
+        return {
+            "matched": list(gate["matched"]),
+            "applicable": applicable,
+        }
+
+    rules: list[dict] = [
+        r for r in (data.get("rules") or []) if r.get("rule_id") in ACTIVE_RULE_IDS
+    ]
+    context_gates = [
+        r for r in rules if _is_context_gate(r) and not _is_population_gate(r)
+    ]
+    other_rules = [
+        r for r in rules if not _is_population_gate(r) and not _is_context_gate(r)
+    ]
+
+    matched: list[dict] = []
 
     # Context gates first (early), but continue so week-specific RTT rules can also match.
     # After Layer2 exists, revisit whether context_gate should reject immediately or route.

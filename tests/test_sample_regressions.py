@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -16,9 +15,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from src.pipeline import run_raw_text_pipeline  # noqa: E402
-from src.plan_extractor import (  # noqa: E402
-    _PLAN_FIELD_SPECS,
-    extract_plan,
+from src.plan_extractor import extract_plan  # noqa: E402
+from tests.extraction_fakes import (  # noqa: E402
+    empty_raw_fields as _empty_raw_fields,
+    fake_client as _fake_client,
 )
 
 CONV_DIR = ROOT / "sample_conversations"
@@ -27,32 +27,6 @@ GT_DIR = ROOT / "tests" / "extraction_ground_truth"
 
 def _load_json(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _empty_raw_fields(**overrides: Any) -> dict[str, Any]:
-    raw: dict[str, Any] = {
-        name: {"value": None, "evidence_quote": None} for name in _PLAN_FIELD_SPECS
-    }
-    raw["possible_meta_instruction_detected"] = False
-    raw["meta_instruction_evidence"] = None
-    for name, entry in overrides.items():
-        raw[name] = entry
-    return raw
-
-
-def _fake_client(raw_fields: dict[str, Any]) -> Any:
-    class _Completions:
-        @staticmethod
-        def create(**kwargs):
-            return SimpleNamespace(
-                choices=[
-                    SimpleNamespace(
-                        message=SimpleNamespace(content=json.dumps(raw_fields))
-                    )
-                ]
-            )
-
-    return SimpleNamespace(chat=SimpleNamespace(completions=_Completions()))
 
 
 def _pass_worthy_beginner_raw() -> dict[str, Any]:

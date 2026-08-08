@@ -81,8 +81,16 @@ def build_request_log_record(
     extraction_ms: int | None,
     layer3_ms: int | None,
     skip_layer3: bool | None = None,
+    stage1_extraction_ms: int | None = None,
+    stage2_extraction_ms: int | None = None,
 ) -> dict[str, Any]:
-    """Assemble a PII-free metering / latency record."""
+    """Assemble a PII-free metering / latency record.
+
+    ``extraction_ms`` is the total extraction wall time (stage1 + stage2 when
+    both ran). ``stage1_extraction_ms`` / ``stage2_extraction_ms`` are the
+    per-stage breakdown; ``stage2_extraction_ms`` is null when stage 2 was
+    skipped (population-gate early-exit).
+    """
     record: dict[str, Any] = {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
         "event": "audit_request",
@@ -95,6 +103,12 @@ def build_request_log_record(
             int(billing_validate_ms) if billing_validate_ms is not None else None
         ),
         "extraction_ms": int(extraction_ms) if extraction_ms is not None else None,
+        "stage1_extraction_ms": (
+            int(stage1_extraction_ms) if stage1_extraction_ms is not None else None
+        ),
+        "stage2_extraction_ms": (
+            int(stage2_extraction_ms) if stage2_extraction_ms is not None else None
+        ),
         "layer3_ms": int(layer3_ms) if layer3_ms is not None else None,
     }
     if skip_layer3 is not None:

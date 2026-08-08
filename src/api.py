@@ -221,6 +221,8 @@ def audit(
                     pipeline_latency_ms=pipeline_ms if pipeline_result else total_ms,
                     billing_validate_ms=billing_ms,
                     extraction_ms=timing.get("extraction_ms"),
+                    stage1_extraction_ms=timing.get("stage1_extraction_ms"),
+                    stage2_extraction_ms=timing.get("stage2_extraction_ms"),
                     layer3_ms=timing.get("layer3_ms"),
                     skip_layer3=body.skip_layer3,
                 )

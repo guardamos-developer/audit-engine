@@ -15,14 +15,23 @@ from .plan_extractor import extract_plan
 
 def _format_extraction_payload(extraction: dict) -> dict[str, Any]:
     """Same payload shape printed under === Extraction === in main.py."""
+    from .plan_extractor import fields_left_null_without_evidence
+
     plan = extraction.get("plan") or {}
     evidence = extraction.get("extraction_evidence") or {}
     warnings = extraction.get("extraction_warnings") or []
-    null_without_evidence = sorted(
-        name
-        for name, quote in evidence.items()
-        if name not in plan and quote is None
-    )
+    queried = extraction.get("queried_fields")
+    if queried is None:
+        # Backward compat for tests that stub extract_plan without queried_fields.
+        null_without_evidence = sorted(
+            name
+            for name, quote in evidence.items()
+            if name not in plan and quote is None
+        )
+    else:
+        null_without_evidence = fields_left_null_without_evidence(
+            plan, evidence, queried_fields=set(queried)
+        )
     return {
         "plan": plan,
         "extraction_evidence": {
@@ -34,6 +43,8 @@ def _format_extraction_payload(extraction: dict) -> dict[str, Any]:
             extraction.get("possible_meta_instruction_detected")
         ),
         "meta_instruction_evidence": extraction.get("meta_instruction_evidence"),
+        "stage2_ran": bool(extraction.get("stage2_ran")),
+        "effective_population": extraction.get("effective_population"),
     }
 
 
@@ -130,7 +141,18 @@ def run_raw_text_pipeline(
     extraction_t0 = perf_counter()
     extraction = extract_plan(user_prompt, ai_response)
     extraction_ms = ms_since(extraction_t0)
+    extraction_timing = dict(extraction.get("_timing") or {})
+    stage1_ms = extraction_timing.get("stage1_extraction_ms")
+    stage2_ms = extraction_timing.get("stage2_extraction_ms")
+    if stage1_ms is not None:
+        # Prefer sum of stage timers when available; else wall-clock extract_plan.
+        parts = [int(stage1_ms)]
+        if stage2_ms is not None:
+            parts.append(int(stage2_ms))
+        extraction_ms = sum(parts)
 
+    # Early-exit and full path both use run_audit on the (possibly stage1-only)
+    # plan so Layer1 evaluation stays a single code path.
     result = run_audit(
         extraction["plan"],
         lang=lang,
@@ -143,6 +165,8 @@ def run_raw_text_pipeline(
     routed_plan = apply_deterministic_age_derived_flags(dict(extraction.get("plan") or {}))
     audit_timing = dict(result.get("_timing") or {})
     audit_timing["extraction_ms"] = extraction_ms
+    audit_timing["stage1_extraction_ms"] = stage1_ms
+    audit_timing["stage2_extraction_ms"] = stage2_ms
     audit_timing["pipeline_latency_ms"] = ms_since(pipeline_t0)
     audit_timing["effective_population"] = effective_target_population(routed_plan)
     result["_timing"] = audit_timing

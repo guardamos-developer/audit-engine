@@ -6,8 +6,6 @@ import json
 import os
 import sys
 from pathlib import Path
-from types import SimpleNamespace
-from typing import Any
 
 import pytest
 
@@ -24,12 +22,21 @@ except ImportError:
 
 from src.plan_extractor import (  # noqa: E402
     EXCLUSION_FLAG_FIELDS,
+    STAGE1_FIELD_NAMES,
     _PLAN_FIELD_SPECS,
     _apply_consistency_checks,
     _check_missed_frequency_rest_cues,
     _materialize_plan_and_evidence,
     build_extraction_json_schema,
     extract_plan,
+    fields_left_null_without_evidence,
+    merge_meta_instruction,
+    merge_raw_stage_outputs,
+    queried_field_names_for_stages,
+)
+from tests.extraction_fakes import (  # noqa: E402
+    empty_raw_fields as _empty_raw_fields,
+    fake_client as _fake_client,
 )
 
 GROUND_TRUTH_DIR = Path(__file__).resolve().parent / "extraction_ground_truth"
@@ -40,34 +47,7 @@ def _load_case(name: str) -> dict:
         return json.load(f)
 
 
-def _fake_client(raw_fields: dict[str, Any]) -> Any:
-    """Minimal OpenAI-like client that returns a fixed structured payload."""
-
-    class _Completions:
-        @staticmethod
-        def create(**kwargs):
-            return SimpleNamespace(
-                choices=[
-                    SimpleNamespace(
-                        message=SimpleNamespace(content=json.dumps(raw_fields))
-                    )
-                ]
-            )
-
-    return SimpleNamespace(chat=SimpleNamespace(completions=_Completions()))
-
-
-def _empty_raw_fields(**overrides: Any) -> dict[str, Any]:
-    """Build a full extraction payload with null plan fields + meta defaults."""
-    raw: dict[str, Any] = {
-        name: {"value": None, "evidence_quote": None}
-        for name in _PLAN_FIELD_SPECS
-    }
-    raw["possible_meta_instruction_detected"] = False
-    raw["meta_instruction_evidence"] = None
-    for name, entry in overrides.items():
-        raw[name] = entry
-    return raw
+# Local helpers removed — use tests.extraction_fakes via imports above.
 
 
 def test_materialize_nulls_false_injury_reusing_frailty_quote():
@@ -319,6 +299,66 @@ def test_no_missed_cue_when_fields_populated():
         {"sessions_per_week": 7, "rest_days_per_week": 0},
     )
     assert warnings == []
+
+
+def test_merge_raw_stage_outputs_does_not_overwrite_stage1_keys():
+    """Zone A/B: stage-1 finalized fields must not be overwritten by stage 2."""
+    stage1 = {
+        name: {"value": None, "evidence_quote": None} for name in STAGE1_FIELD_NAMES
+    }
+    stage1["age_years"] = {"value": 40, "evidence_quote": "I'm 40"}
+    stage1["frailty_present"] = {
+        "value": True,
+        "evidence_quote": "I feel frail",
+    }
+    stage1["possible_meta_instruction_detected"] = False
+    stage1["meta_instruction_evidence"] = None
+
+    stage2 = {
+        "age_years": {"value": 99, "evidence_quote": "should be ignored"},
+        "frailty_present": {"value": False, "evidence_quote": "ignored"},
+        "sets_per_exercise": {"value": 3, "evidence_quote": "3 sets"},
+        "possible_meta_instruction_detected": False,
+        "meta_instruction_evidence": None,
+    }
+    merged = merge_raw_stage_outputs(stage1, stage2)
+    assert merged["age_years"]["value"] == 40
+    assert merged["frailty_present"]["value"] is True
+    assert merged["sets_per_exercise"]["value"] == 3
+
+
+def test_merge_meta_instruction_chronological_priority():
+    s1 = {
+        "possible_meta_instruction_detected": True,
+        "meta_instruction_evidence": "stage1 note",
+    }
+    s2 = {
+        "possible_meta_instruction_detected": True,
+        "meta_instruction_evidence": "stage2 note",
+    }
+    detected, evidence = merge_meta_instruction(s1, s2)
+    assert detected is True
+    assert evidence == "stage1 note"
+
+    s1_false = {
+        "possible_meta_instruction_detected": False,
+        "meta_instruction_evidence": None,
+    }
+    detected, evidence = merge_meta_instruction(s1_false, s2)
+    assert detected is True
+    assert evidence == "stage2 note"
+
+
+def test_fields_left_null_only_includes_queried_fields():
+    plan = {"age_years": 40}
+    evidence = {"age_years": "40", "sets_per_exercise": None}
+    queried = queried_field_names_for_stages(
+        stage2_population=None, stage2_ran=False
+    )
+    left = fields_left_null_without_evidence(plan, evidence, queried_fields=queried)
+    assert "age_years" not in left
+    assert "sets_per_exercise" not in left  # not queried in stage1-only
+    assert "frailty_present" in left
 
 
 @pytest.mark.integration

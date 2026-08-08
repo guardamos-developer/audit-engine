@@ -62,6 +62,8 @@ def test_build_and_emit_request_log_has_no_plan_fields():
         pipeline_latency_ms=1100,
         billing_validate_ms=80,
         extraction_ms=900,
+        stage1_extraction_ms=400,
+        stage2_extraction_ms=500,
         layer3_ms=None,
         skip_layer3=True,
     )
@@ -78,6 +80,12 @@ def test_build_and_emit_request_log_has_no_plan_fields():
     assert record["pipeline_latency_ms"] == 1100
     assert record["total_latency_ms"] == 1200
     assert record["billing_validate_ms"] == 80
+    assert record["extraction_ms"] == 900
+    assert record["stage1_extraction_ms"] == 400
+    assert record["stage2_extraction_ms"] == 500
+    assert record["extraction_ms"] == (
+        record["stage1_extraction_ms"] + record["stage2_extraction_ms"]
+    )
 
     captured: list[str] = []
 
@@ -128,6 +136,8 @@ def test_audit_emits_structured_log_and_strips_timing_from_response(
             "ruleset_version": "test",
             "_timing": {
                 "extraction_ms": 50,
+                "stage1_extraction_ms": 30,
+                "stage2_extraction_ms": 20,
                 "layer3_ms": None,
                 "pipeline_latency_ms": 60,
                 "effective_population": "healthy_adult_18plus",
@@ -172,6 +182,8 @@ def test_audit_emits_structured_log_and_strips_timing_from_response(
     assert logged["skip_layer3"] is True
     assert logged["ruleset_ids"] == ["L1-RT-ACSM2026-v1"]
     assert logged["extraction_ms"] == 50
+    assert logged["stage1_extraction_ms"] == 30
+    assert logged["stage2_extraction_ms"] == 20
     assert logged["pipeline_latency_ms"] == 60
     assert logged["billing_validate_ms"] is not None
     assert logged["total_latency_ms"] >= logged["pipeline_latency_ms"]
