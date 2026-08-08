@@ -450,6 +450,7 @@
   "ruleset_notes": {
     "verification_status_meaning": "pending_source_check = extracted by LLM, not yet manually cross-checked against the source PDF. verified = manually confirmed against source. Update this field per rule as cross-checks are completed.",
     "batch_verification_plan": "Verification of A1/B7/B8-equivalent rules to be done in one batch after extraction from all 3 source documents is complete.",
-    "lenient_exclusion_euphemism_limit": "See the same-named note on the NSCA older-adults ruleset. Euphemistic decline language without clear exclusion cues or age can miss population-gate exclusion and fall through to default healthy_adult_18plus evaluation under this ACSM ruleset."
+    "lenient_exclusion_euphemism_limit": "See the same-named note on the NSCA older-adults ruleset. Euphemistic decline language without clear exclusion cues or age can miss population-gate exclusion and fall through to default healthy_adult_18plus evaluation under this ACSM ruleset.",
+    "stage2_parallelism_backlog": "Stage-2 currently runs two ThreadPoolExecutor groups (metrics vs caution flags for adults; Table1+mirrors vs Table3 for older adults) with all-or-nothing failure. Out of scope for the initial parallel ship, tracked for post-Live iteration: (1) a third parallel group, (2) AsyncOpenAI / full-async pipeline, (3) partial-success policies when only one group fails (today any group transport/timeout/5xx fails the whole extraction)."
   }
 }

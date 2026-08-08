@@ -279,6 +279,69 @@ STAGE2_OLDER_FIELD_NAMES: frozenset[str] = (
     STAGE2_SHARED_FIELD_NAMES | STAGE2_OLDER_ONLY_FIELD_NAMES
 )
 
+# Stage-2 parallel groups (ThreadPoolExecutor; Live follow-ups may add a third
+# group / AsyncOpenAI / partial-success — see ruleset_notes.stage2_parallelism_backlog).
+# Groups within a population must be disjoint and cover STAGE2_*_FIELD_NAMES.
+
+STAGE2_ADULT_GROUP_A_FIELD_NAMES: frozenset[str] = frozenset(
+    {
+        *STAGE2_SHARED_FIELD_NAMES,
+        "goal",
+        "experience_level",
+        "sessions_per_week",
+        "weekly_sets_per_muscle_group",
+        "intensity_percent_1RM",
+        "rest_minutes",
+        "rest_days_per_week",
+        "frequency_days_per_week",
+        "reps",
+        "inactivity_duration_weeks",
+        "weeks_since_return",
+    }
+)
+
+STAGE2_ADULT_GROUP_B_FIELD_NAMES: frozenset[str] = frozenset(
+    {
+        "output_claims_RT_is_unsafe_for_healthy_adult_without_specific_contraindication",
+        "plan_uses_FIT_rule_IRV_as_primary_constraint",
+        "work_rest_ratio_denominator",
+        "eccentric_emphasis_flagged",
+        "novel_high_volume_circuit",
+        "plan_output_lacks_medical_clearance_recommendation",
+        "user_reports_persistent_unexplained_fatigue_or_performance_decline_weeks",
+        "plan_recommends_continuing_programmed_progression_without_reevaluation",
+        "uses_relative_load_reduction",
+        "relative_reduction_evidence_quote",
+    }
+)
+
+STAGE2_OLDER_GROUP_A_FIELD_NAMES: frozenset[str] = frozenset(
+    {
+        *STAGE2_SHARED_FIELD_NAMES,
+        "output_claims_RT_is_unsafe_for_older_adult_without_specific_contraindication",
+    }
+)
+
+STAGE2_OLDER_GROUP_B_FIELD_NAMES: frozenset[str] = frozenset(
+    {
+        "mobility_limitation_present",
+        "plan_offers_seated_position_option",
+        "cognitive_impairment_present",
+        "plan_uses_simple_exercise_selection_with_instruction",
+        "diabetes_present",
+        "blood_glucose_monitoring_mentioned",
+        "spinal_flexion_or_twisting_caution_mentioned",
+        "joint_pain_or_limited_rom_present",
+        "rom_restricted_training_mentioned",
+        "poor_vision_or_balance_present",
+        "fall_risk_present",
+        "low_back_pain_present",
+        "equipment_modality",
+    }
+)
+
+_STAGE2_GROUP_IDS = frozenset({"a", "b"})
+
 _PRIMARY_POPULATION_STAGE2 = frozenset(
     {"healthy_adult_18plus", "older_adult_healthy"}
 )
@@ -294,6 +357,40 @@ def stage2_field_names_for_population(population: str) -> frozenset[str]:
         f"Unsupported stage-2 population {population!r}; "
         f"expected one of {sorted(_PRIMARY_POPULATION_STAGE2)}"
     )
+
+
+def stage2_group_field_names(population: str, group: str) -> frozenset[str]:
+    """Return field names for one parallel stage-2 group (``a`` or ``b``)."""
+    g = (group or "").strip().lower()
+    if g not in _STAGE2_GROUP_IDS:
+        raise ValueError(f"Unsupported stage-2 group {group!r}; expected 'a' or 'b'")
+    if population == "healthy_adult_18plus":
+        return (
+            STAGE2_ADULT_GROUP_A_FIELD_NAMES
+            if g == "a"
+            else STAGE2_ADULT_GROUP_B_FIELD_NAMES
+        )
+    if population == "older_adult_healthy":
+        return (
+            STAGE2_OLDER_GROUP_A_FIELD_NAMES
+            if g == "a"
+            else STAGE2_OLDER_GROUP_B_FIELD_NAMES
+        )
+    raise ValueError(
+        f"Unsupported stage-2 population {population!r}; "
+        f"expected one of {sorted(_PRIMARY_POPULATION_STAGE2)}"
+    )
+
+
+# Invariant checks (import-time): groups partition the population stage-2 set.
+assert STAGE2_ADULT_GROUP_A_FIELD_NAMES.isdisjoint(STAGE2_ADULT_GROUP_B_FIELD_NAMES)
+assert (
+    STAGE2_ADULT_GROUP_A_FIELD_NAMES | STAGE2_ADULT_GROUP_B_FIELD_NAMES
+) == STAGE2_ADULT_FIELD_NAMES
+assert STAGE2_OLDER_GROUP_A_FIELD_NAMES.isdisjoint(STAGE2_OLDER_GROUP_B_FIELD_NAMES)
+assert (
+    STAGE2_OLDER_GROUP_A_FIELD_NAMES | STAGE2_OLDER_GROUP_B_FIELD_NAMES
+) == STAGE2_OLDER_FIELD_NAMES
 
 
 _SYSTEM_PROMPT_COMMON = """You extract structured training-plan fields from a user prompt
@@ -396,31 +493,31 @@ S1-4. target_population: when the text clearly states a primary population
    with a vague label; leave null rather than guessing.
 """
 
-_SYSTEM_PROMPT_STAGE2_ADULT = """
-Stage-2 scope for healthy_adult_18plus (ACSM + CSCCa/ECSS metrics):
+_SYSTEM_PROMPT_STAGE2_ADULT_GROUP_A = """
+Stage-2 group A for healthy_adult_18plus — training metrics only:
 Population and exclusion flags are already finalized in stage 1 — do NOT
 re-extract or contradict age_years, stated_age_category, target_population,
-or LENIENT exclusion flags.
+or LENIENT exclusion flags. Do NOT extract caution/context flags that belong
+to group B (FIT/IRV, relative load, medical clearance, ECSS fatigue, etc.).
 
-S2A-1. Prefer numbers stated explicitly. Do not invent absolute values from
-   vague relative language like "go lighter" or "reduce volume". Capture that
-   language via uses_relative_load_reduction instead.
+S2A-A1. Prefer numbers stated explicitly. Do not invent absolute values from
+   vague relative language like "go lighter" or "reduce volume".
 
-S2A-2. inactivity_duration_weeks: convert clear durations (e.g. "six months",
+S2A-A2. inactivity_duration_weeks: convert clear durations (e.g. "six months",
    "4.5 months") to an integer week estimate only when the text supports it;
    otherwise null.
 
-S2A-3. repetitions_per_set: integer reps per set only when a clear single
+S2A-A3. repetitions_per_set: integer reps per set only when a clear single
    number or a tight range that resolves to one representative integer is
    stated (e.g. "10 reps" → 10). Prefer the midpoint of a narrow range only
    when both bounds are explicit integers; otherwise null. The free-text
    reps field may still hold the raw string.
 
-S2A-4. goal: do NOT copy the user's wording verbatim. Classify into the
+S2A-A4. goal: do NOT copy the user's wording verbatim. Classify into the
    closest of ["strength", "hypertrophy", "power", "general"]. If none fits,
    leave null.
 
-S2A-5. program_mandates_training_to_failure:
+S2A-A5. program_mandates_training_to_failure:
    - true only when the text explicitly requires training to failure, AMRAP,
      or "to failure" / "until failure" as a mandate.
    - false when the text clearly keeps reps in reserve (e.g. "2–3 RIR",
@@ -429,25 +526,38 @@ S2A-5. program_mandates_training_to_failure:
    - null when failure/RIR/RPE/AMRAP is not clearly stated — do not guess.
    Do not treat "train hard" alone as training to failure.
 
-S2A-6. output_claims_RT_is_unsafe_for_healthy_adult_without_specific_contraindication:
+S2A-A6. Also extract when evidenced: sessions_per_week, sets_per_exercise,
+   weekly_sets_per_muscle_group, load_percent_1RM / intensity_percent_1RM,
+   rest_minutes, rest_days_per_week, frequency_days_per_week, weeks_since_return,
+   experience_level, program_mandates_complex_periodization_as_required,
+   output_recommends_zero_resistance_training_for_muscle_function_goal.
+"""
+
+_SYSTEM_PROMPT_STAGE2_ADULT_GROUP_B = """
+Stage-2 group B for healthy_adult_18plus — caution / context flags only:
+Population and exclusion flags are already finalized in stage 1 — do NOT
+re-extract them. Do NOT extract training metrics that belong to group A
+(sets, reps, load, sessions, rest, goal, inactivity weeks, etc.).
+
+S2A-B1. output_claims_RT_is_unsafe_for_healthy_adult_without_specific_contraindication:
    - true when the AI response claims resistance training is unsafe/dangerous
      for a healthy adult without naming a specific contraindication.
    - false when safety of RT is affirmed; null when unclear.
 
-S2A-7. plan_uses_FIT_rule_IRV_as_primary_constraint:
+S2A-B2. plan_uses_FIT_rule_IRV_as_primary_constraint:
    - true only when the text explicitly uses the FIT rule / IRV (11-30 units)
      as the primary intensity limit for the plan.
    - null when FIT/IRV is not clearly stated as the main constraint.
 
-S2A-8. work_rest_ratio_denominator:
+S2A-B3. work_rest_ratio_denominator:
    - integer denominator of the work:rest ratio when explicitly stated
      (e.g. "1:4 rest" → 4).
    - null when no explicit ratio denominator is quoted.
 
-S2A-9. eccentric_emphasis_flagged / novel_high_volume_circuit:
+S2A-B4. eccentric_emphasis_flagged / novel_high_volume_circuit:
    - true only on clear evidence; null otherwise.
 
-S2A-10. plan_output_lacks_medical_clearance_recommendation:
+S2A-B5. plan_output_lacks_medical_clearance_recommendation:
    - true only when the user context is long-inactivity return AND the AI
      response gives a concrete training plan without recommending physician /
      medical clearance check-in.
@@ -455,11 +565,11 @@ S2A-10. plan_output_lacks_medical_clearance_recommendation:
      medical clearance before starting.
    - null when return-from-inactivity context or clearance language is unclear.
 
-S2A-11. user_reports_persistent_unexplained_fatigue_or_performance_decline_weeks /
+S2A-B6. user_reports_persistent_unexplained_fatigue_or_performance_decline_weeks /
    plan_recommends_continuing_programmed_progression_without_reevaluation:
    - Follow clear textual evidence only; otherwise null.
 
-S2A-12. uses_relative_load_reduction / relative_reduction_evidence_quote:
+S2A-B7. uses_relative_load_reduction / relative_reduction_evidence_quote:
    - If the response reduces load, volume, or intensity using relative /
      comparative language (e.g. "reduce by X%", "lighter than normal",
      "ease back in") rather than stating an absolute "%1RM" or kg/lb load,
@@ -469,36 +579,37 @@ S2A-12. uses_relative_load_reduction / relative_reduction_evidence_quote:
    - If no such language is present, set uses_relative_load_reduction to
      false or null (null when unclear) and relative_reduction_evidence_quote
      to null.
-
-S2A-13. Also extract when evidenced: sessions_per_week, sets_per_exercise,
-   weekly_sets_per_muscle_group, load_percent_1RM / intensity_percent_1RM,
-   rest_minutes, rest_days_per_week, frequency_days_per_week, weeks_since_return,
-   experience_level, program_mandates_complex_periodization_as_required,
-   output_recommends_zero_resistance_training_for_muscle_function_goal.
 """
 
-_SYSTEM_PROMPT_STAGE2_OLDER = """
-Stage-2 scope for older_adult_healthy (NSCA Table 1 + Table 3 + caution mirrors):
+_SYSTEM_PROMPT_STAGE2_OLDER_GROUP_A = """
+Stage-2 group A for older_adult_healthy — NSCA Table 1 metrics + caution mirrors:
 Population and exclusion flags are already finalized in stage 1 — do NOT
-re-extract or contradict age_years, stated_age_category, target_population,
-or LENIENT exclusion flags (including osteoporosis_present / frailty_present).
+re-extract them. Do NOT extract Table 3 condition/accommodation fields
+(those belong to group B).
 
-S2O-1. Table 1 metrics when evidenced: sets_per_exercise, repetitions_per_set,
+S2O-A1. Table 1 metrics when evidenced: sets_per_exercise, repetitions_per_set,
    load_percent_1RM.
 
-S2O-2. program_mandates_training_to_failure /
+S2O-A2. program_mandates_training_to_failure /
    program_mandates_complex_periodization_as_required /
    output_recommends_zero_resistance_training_for_muscle_function_goal:
-   - Same evidence rules as the adult stage (true only on clear mandate /
+   - Same evidence rules as adult metrics (true only on clear mandate /
      claim; false only on clear denial; else null).
 
-S2O-3. output_claims_RT_is_unsafe_for_older_adult_without_specific_contraindication:
+S2O-A3. output_claims_RT_is_unsafe_for_older_adult_without_specific_contraindication:
    - true when the AI response claims resistance training is unsafe/dangerous
      for a healthy older adult without naming a specific contraindication.
    - Prefer this field (not the healthy_adult variant) for older adults.
    - false when safety of RT for older adults is affirmed; null when unclear.
+"""
 
-S2O-4. NSCA Table 3 condition / context flags (mobility_limitation_present,
+_SYSTEM_PROMPT_STAGE2_OLDER_GROUP_B = """
+Stage-2 group B for older_adult_healthy — NSCA Table 3 only:
+Population and exclusion flags are already finalized in stage 1 — do NOT
+re-extract them (including osteoporosis_present / frailty_present). Do NOT
+extract Table 1 metrics (sets/reps/load) or caution mirrors (group A).
+
+S2O-B1. NSCA Table 3 condition / context flags (mobility_limitation_present,
     cognitive_impairment_present, diabetes_present,
     joint_pain_or_limited_rom_present, poor_vision_or_balance_present,
     fall_risk_present, low_back_pain_present):
@@ -506,7 +617,7 @@ S2O-4. NSCA Table 3 condition / context flags (mobility_limitation_present,
      (prefer true on suggestive language). osteoporosis_present was already
      handled in stage 1 — do not re-emit it here.
 
-S2O-5. STRICT accommodation / modality fields (null-if-uncertain; asymmetric —
+S2O-B2. STRICT accommodation / modality fields (null-if-uncertain; asymmetric —
     opposite of stage-1 LENIENT exclusion flags):
    plan_offers_seated_position_option,
    plan_uses_simple_exercise_selection_with_instruction,
@@ -529,6 +640,14 @@ S2O-5. STRICT accommodation / modality fields (null-if-uncertain; asymmetric —
    exclusion is the dangerous miss. (Asymmetric opposite of item 5
    LENIENT_EXCLUSION_FIELDS.)
 """
+
+# Full stage-2 prompts (union of groups) kept for docs / single-call helpers.
+_SYSTEM_PROMPT_STAGE2_ADULT = (
+    _SYSTEM_PROMPT_STAGE2_ADULT_GROUP_A + _SYSTEM_PROMPT_STAGE2_ADULT_GROUP_B
+)
+_SYSTEM_PROMPT_STAGE2_OLDER = (
+    _SYSTEM_PROMPT_STAGE2_OLDER_GROUP_A + _SYSTEM_PROMPT_STAGE2_OLDER_GROUP_B
+)
 
 # Full prompt kept for union-schema / single-call callers and prompt-content tests.
 _SYSTEM_PROMPT = (
@@ -579,8 +698,17 @@ def build_stage1_extraction_schema() -> dict[str, Any]:
 
 
 def build_stage2_extraction_schema(population: str) -> dict[str, Any]:
-    """Strict JSON schema for stage-2 extraction for a confirmed population."""
+    """Strict JSON schema for full stage-2 (union of parallel groups).
+
+    Prefer ``build_stage2_group_schema(population, group)`` for live extraction.
+    Kept as the union of groups A+B for callers that still want one schema.
+    """
     return _schema_for_field_names(stage2_field_names_for_population(population))
+
+
+def build_stage2_group_schema(population: str, group: str) -> dict[str, Any]:
+    """Strict JSON schema for one parallel stage-2 group (``a`` or ``b``)."""
+    return _schema_for_field_names(stage2_group_field_names(population, group))
 
 
 def build_extraction_json_schema() -> dict[str, Any]:
@@ -845,30 +973,58 @@ def merge_raw_stage_outputs(
                 fallback if isinstance(fallback, dict) else _null_field_entry()
             )
 
-    meta_detected, meta_evidence = merge_meta_instruction(stage1_raw, stage2_raw)
+    meta_detected, meta_evidence = merge_meta_instruction_chain(stage1_raw, stage2)
     merged["possible_meta_instruction_detected"] = meta_detected
     merged["meta_instruction_evidence"] = meta_evidence
     return merged
+
+
+def merge_meta_instruction_chain(
+    *raws: dict[str, Any] | None,
+) -> tuple[bool, str | None]:
+    """OR-merge meta flags across raws; evidence uses first-true chronological order.
+
+    Raws are inspected in call order (stage1, then stage2 group A, then group B).
+    The first raw that reports true wins for ``meta_instruction_evidence``
+    (no concatenation). Parallel stage-2 groups use a stable A-then-B order
+    because wall-clock completion order is nondeterministic.
+    """
+    for raw in raws:
+        if not isinstance(raw, dict):
+            continue
+        detected, evidence = _materialize_meta_instruction(raw)
+        if detected:
+            return True, evidence
+    return False, None
 
 
 def merge_meta_instruction(
     stage1_raw: dict[str, Any],
     stage2_raw: dict[str, Any] | None,
 ) -> tuple[bool, str | None]:
-    """OR-merge meta flags; evidence uses chronological stage priority.
+    """OR-merge meta for stage1 + a single stage2 blob (compat wrapper)."""
+    return merge_meta_instruction_chain(stage1_raw, stage2_raw)
 
-    If stage 1 reports true, keep stage-1 evidence (do not concatenate).
-    Else if stage 2 reports true, use stage-2 evidence.
+
+def combine_stage2_group_raws(
+    group_a_raw: dict[str, Any],
+    group_b_raw: dict[str, Any],
+) -> dict[str, Any]:
+    """Merge two parallel stage-2 group payloads into one stage-2 raw dict.
+
+    Group field sets are disjoint by construction. Meta uses A-then-B priority.
     """
-    d1, e1 = _materialize_meta_instruction(stage1_raw)
-    if d1:
-        return True, e1
-    if not isinstance(stage2_raw, dict):
-        return False, None
-    d2, e2 = _materialize_meta_instruction(stage2_raw)
-    if d2:
-        return True, e2
-    return False, None
+    combined: dict[str, Any] = {}
+    for raw in (group_a_raw, group_b_raw):
+        for key, value in raw.items():
+            if key in ("possible_meta_instruction_detected", "meta_instruction_evidence"):
+                continue
+            if key not in combined:
+                combined[key] = value
+    detected, evidence = merge_meta_instruction_chain(group_a_raw, group_b_raw)
+    combined["possible_meta_instruction_detected"] = detected
+    combined["meta_instruction_evidence"] = evidence
+    return combined
 
 
 def queried_field_names_for_stages(
@@ -934,7 +1090,7 @@ def _materialize_meta_instruction(
 
 
 def extract_plan(user_prompt: str, ai_response: str, *, client: Any = None) -> dict:
-    """Two-stage free-text extraction (stage1 gate → optional stage2).
+    """Two-stage free-text extraction (stage1 gate → optional parallel stage2).
 
     user_prompt: the question the user sent to the AI (contextual information;
         injury, pregnancy, time since last training, etc. usually appear here)
@@ -955,6 +1111,8 @@ def extract_plan(user_prompt: str, ai_response: str, *, client: Any = None) -> d
           "_timing": {
             "stage1_extraction_ms": int,
             "stage2_extraction_ms": int | None,
+            "stage2_group_a_ms": int | None,
+            "stage2_group_b_ms": int | None,
           },
         }
 
@@ -962,7 +1120,12 @@ def extract_plan(user_prompt: str, ai_response: str, *, client: Any = None) -> d
     both the raw extraction and the evidence map — never fill in a guessed
     value. Fields that remain null are omitted from ``plan`` so missing metrics
     stay "undecided" for Layer1 (skip), not silently treated as clear.
+
+    Stage-2 runs groups A and B concurrently via ThreadPoolExecutor. If either
+    group fails (timeout / transport / API error), the whole extraction fails
+    (no partial success).
     """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from time import perf_counter
 
     from .layer1_engine import evaluate_primary_population_gates
@@ -988,19 +1151,54 @@ def extract_plan(user_prompt: str, ai_response: str, *, client: Any = None) -> d
         stage1_result["_timing"] = {
             "stage1_extraction_ms": stage1_ms,
             "stage2_extraction_ms": None,
+            "stage2_group_a_ms": None,
+            "stage2_group_b_ms": None,
         }
         return stage1_result
 
-    stage2_t0 = perf_counter()
-    raw2 = call_stage2_extraction(
-        user_prompt,
-        ai_response,
-        population=population,
-        client=client,
-    )
-    stage2_ms = ms_since(stage2_t0)
+    stage2_wall_t0 = perf_counter()
+    group_ms: dict[str, int] = {}
+    group_raws: dict[str, dict[str, Any]] = {}
 
+    def _run_group(group_id: str) -> tuple[str, dict[str, Any], int]:
+        t0 = perf_counter()
+        raw = call_stage2_group_extraction(
+            user_prompt,
+            ai_response,
+            population=population,
+            group=group_id,
+            client=client,
+        )
+        return group_id, raw, ms_since(t0)
+
+    # All-or-nothing: any group failure aborts the whole extraction.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = {
+            pool.submit(_run_group, "a"): "a",
+            pool.submit(_run_group, "b"): "b",
+        }
+        try:
+            for fut in as_completed(futures):
+                group_id, raw, elapsed = fut.result()
+                group_raws[group_id] = raw
+                group_ms[group_id] = elapsed
+        except Exception:
+            for fut in futures:
+                fut.cancel()
+            raise
+
+    stage2_ms = ms_since(stage2_wall_t0)
+    raw2 = combine_stage2_group_raws(group_raws["a"], group_raws["b"])
+    # Re-apply stage1→stage2 meta chain (stage1 wins over either group).
     merged = merge_raw_stage_outputs(raw1, raw2)
+    # Ensure meta respects stage1 then A then B (combine already did A/B;
+    # merge_raw_stage_outputs only sees combined stage2 — rebuild meta chain).
+    meta_detected, meta_evidence = merge_meta_instruction_chain(
+        raw1, group_raws["a"], group_raws["b"]
+    )
+    merged["possible_meta_instruction_detected"] = meta_detected
+    merged["meta_instruction_evidence"] = meta_evidence
+
     result = _finalize_extraction_from_merged_raw(merged, ai_response)
     queried = queried_field_names_for_stages(
         stage2_population=population, stage2_ran=True
@@ -1011,6 +1209,8 @@ def extract_plan(user_prompt: str, ai_response: str, *, client: Any = None) -> d
     result["_timing"] = {
         "stage1_extraction_ms": stage1_ms,
         "stage2_extraction_ms": stage2_ms,
+        "stage2_group_a_ms": group_ms.get("a"),
+        "stage2_group_b_ms": group_ms.get("b"),
     }
     return result
 
@@ -1041,6 +1241,7 @@ def _call_structured_extraction(
     client: Any = None,
     schema: dict[str, Any] | None = None,
     system_prompt: str | None = None,
+    schema_name: str = "guardamos_plan_extraction",
 ) -> dict[str, Any]:
     api_key = (os.environ.get("OPENAI_API_KEY") or "").strip()
     if client is None:
@@ -1074,7 +1275,7 @@ def _call_structured_extraction(
         response_format={
             "type": "json_schema",
             "json_schema": {
-                "name": "guardamos_plan_extraction",
+                "name": schema_name,
                 "strict": True,
                 "schema": schema,
             },
@@ -1103,6 +1304,46 @@ def call_stage1_extraction(
         client=client,
         schema=build_stage1_extraction_schema(),
         system_prompt=_SYSTEM_PROMPT_COMMON + _SYSTEM_PROMPT_STAGE1,
+        schema_name="guardamos_plan_extraction_stage1",
+    )
+
+
+def _stage2_group_system_prompt(population: str, group: str) -> str:
+    g = group.strip().lower()
+    if population == "healthy_adult_18plus":
+        part = (
+            _SYSTEM_PROMPT_STAGE2_ADULT_GROUP_A
+            if g == "a"
+            else _SYSTEM_PROMPT_STAGE2_ADULT_GROUP_B
+        )
+    elif population == "older_adult_healthy":
+        part = (
+            _SYSTEM_PROMPT_STAGE2_OLDER_GROUP_A
+            if g == "a"
+            else _SYSTEM_PROMPT_STAGE2_OLDER_GROUP_B
+        )
+    else:
+        raise ValueError(f"Unsupported stage-2 population: {population!r}")
+    return _SYSTEM_PROMPT_COMMON + part
+
+
+def call_stage2_group_extraction(
+    user_prompt: str,
+    ai_response: str,
+    *,
+    population: str,
+    group: str,
+    client: Any = None,
+) -> dict[str, Any]:
+    """Run one parallel stage-2 group (``a`` or ``b``) for a confirmed population."""
+    g = group.strip().lower()
+    return _call_structured_extraction(
+        user_prompt,
+        ai_response,
+        client=client,
+        schema=build_stage2_group_schema(population, g),
+        system_prompt=_stage2_group_system_prompt(population, g),
+        schema_name=f"guardamos_plan_extraction_stage2_{g}",
     )
 
 
@@ -1113,7 +1354,11 @@ def call_stage2_extraction(
     population: str,
     client: Any = None,
 ) -> dict[str, Any]:
-    """Run stage-2 structured extraction for a confirmed primary population."""
+    """Run full stage-2 as a single (non-parallel) union-schema call.
+
+    Prefer the parallel path inside ``extract_plan``. Kept for debugging and
+    callers that explicitly want one stage-2 request.
+    """
     if population == "older_adult_healthy":
         stage_prompt = _SYSTEM_PROMPT_COMMON + _SYSTEM_PROMPT_STAGE2_OLDER
     elif population == "healthy_adult_18plus":
@@ -1126,4 +1371,5 @@ def call_stage2_extraction(
         client=client,
         schema=build_stage2_extraction_schema(population),
         system_prompt=stage_prompt,
+        schema_name="guardamos_plan_extraction_stage2",
     )

@@ -32,7 +32,7 @@ def _base_plan(**overrides):
 
 
 def test_clearly_violating_plan_matches_multiple_rules():
-    """週1回・1セット・毎セットfailure・複雑な期分け強制 → 複数ルールが同時マッチ."""
+    """1x/week, 1 set, failure every set, complex periodization mandated → multiple matches."""
     plan = _base_plan(
         sessions_per_week=1,
         sets_per_exercise=1,
@@ -52,7 +52,7 @@ def test_clearly_violating_plan_matches_multiple_rules():
 
 
 def test_evidence_aligned_plan_matches_nothing():
-    """週2〜3回・80%1RM前後・2〜3セット → マッチなし."""
+    """2–3x/week, ~80% 1RM, 2–3 sets → no matches."""
     plan = _base_plan(
         sessions_per_week=3,
         sets_per_exercise=3,
@@ -65,10 +65,10 @@ def test_evidence_aligned_plan_matches_nothing():
 
 
 def test_boundary_strength_load_only_l1_rt_0004():
-    """筋力目標で80%1RM未満（境界）→ L1-RT-0004のみマッチ.
+    """Strength goal with load under 80% 1RM (boundary) → L1-RT-0004 only.
 
-    注: ルール本体は「筋力目標で load < 80%」をフラグする。
-    初心者除外(true_beginner_first_weeks)は別フィールドで表現する。
+    Note: the rule flags strength goals with load < 80%.
+    Beginner exclusion (true_beginner_first_weeks) is a separate field.
     """
     plan = _base_plan(
         goal="strength",

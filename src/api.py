@@ -223,6 +223,8 @@ def audit(
                     extraction_ms=timing.get("extraction_ms"),
                     stage1_extraction_ms=timing.get("stage1_extraction_ms"),
                     stage2_extraction_ms=timing.get("stage2_extraction_ms"),
+                    stage2_group_a_ms=timing.get("stage2_group_a_ms"),
+                    stage2_group_b_ms=timing.get("stage2_group_b_ms"),
                     layer3_ms=timing.get("layer3_ms"),
                     skip_layer3=body.skip_layer3,
                 )

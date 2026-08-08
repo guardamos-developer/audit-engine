@@ -167,6 +167,8 @@ def run_raw_text_pipeline(
     audit_timing["extraction_ms"] = extraction_ms
     audit_timing["stage1_extraction_ms"] = stage1_ms
     audit_timing["stage2_extraction_ms"] = stage2_ms
+    audit_timing["stage2_group_a_ms"] = extraction_timing.get("stage2_group_a_ms")
+    audit_timing["stage2_group_b_ms"] = extraction_timing.get("stage2_group_b_ms")
     audit_timing["pipeline_latency_ms"] = ms_since(pipeline_t0)
     audit_timing["effective_population"] = effective_target_population(routed_plan)
     result["_timing"] = audit_timing

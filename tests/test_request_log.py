@@ -64,6 +64,8 @@ def test_build_and_emit_request_log_has_no_plan_fields():
         extraction_ms=900,
         stage1_extraction_ms=400,
         stage2_extraction_ms=500,
+        stage2_group_a_ms=480,
+        stage2_group_b_ms=490,
         layer3_ms=None,
         skip_layer3=True,
     )
@@ -83,6 +85,8 @@ def test_build_and_emit_request_log_has_no_plan_fields():
     assert record["extraction_ms"] == 900
     assert record["stage1_extraction_ms"] == 400
     assert record["stage2_extraction_ms"] == 500
+    assert record["stage2_group_a_ms"] == 480
+    assert record["stage2_group_b_ms"] == 490
     assert record["extraction_ms"] == (
         record["stage1_extraction_ms"] + record["stage2_extraction_ms"]
     )
@@ -138,6 +142,8 @@ def test_audit_emits_structured_log_and_strips_timing_from_response(
                 "extraction_ms": 50,
                 "stage1_extraction_ms": 30,
                 "stage2_extraction_ms": 20,
+                "stage2_group_a_ms": 18,
+                "stage2_group_b_ms": 19,
                 "layer3_ms": None,
                 "pipeline_latency_ms": 60,
                 "effective_population": "healthy_adult_18plus",
@@ -184,6 +190,8 @@ def test_audit_emits_structured_log_and_strips_timing_from_response(
     assert logged["extraction_ms"] == 50
     assert logged["stage1_extraction_ms"] == 30
     assert logged["stage2_extraction_ms"] == 20
+    assert logged["stage2_group_a_ms"] == 18
+    assert logged["stage2_group_b_ms"] == 19
     assert logged["pipeline_latency_ms"] == 60
     assert logged["billing_validate_ms"] is not None
     assert logged["total_latency_ms"] >= logged["pipeline_latency_ms"]

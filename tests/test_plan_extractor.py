@@ -37,6 +37,7 @@ from src.plan_extractor import (  # noqa: E402
 from tests.extraction_fakes import (  # noqa: E402
     empty_raw_fields as _empty_raw_fields,
     fake_client as _fake_client,
+    fake_client_fail_stage2_group,
 )
 
 GROUND_TRUTH_DIR = Path(__file__).resolve().parent / "extraction_ground_truth"
@@ -359,6 +360,42 @@ def test_fields_left_null_only_includes_queried_fields():
     assert "age_years" not in left
     assert "sets_per_exercise" not in left  # not queried in stage1-only
     assert "frailty_present" in left
+
+
+def test_stage2_group_b_timeout_fails_entire_extraction():
+    """All-or-nothing: one parallel group failure aborts the whole extract_plan."""
+    raw = _empty_raw_fields(
+        age_years={"value": 35, "evidence_quote": "I'm 35"},
+        sets_per_exercise={"value": 3, "evidence_quote": "3 sets"},
+        sessions_per_week={"value": 3, "evidence_quote": "3 days"},
+    )
+    client = fake_client_fail_stage2_group(raw, fail_group="b")
+    with pytest.raises(TimeoutError, match="injected timeout"):
+        extract_plan(
+            "I'm 35 and healthy. Strength plan please.",
+            "Train 3 days per week, 3 sets, 8-10 reps.",
+            client=client,
+        )
+
+
+def test_stage2_parallel_groups_partition_adult_and_older_fields():
+    from src.plan_extractor import (
+        STAGE2_ADULT_FIELD_NAMES,
+        STAGE2_ADULT_GROUP_A_FIELD_NAMES,
+        STAGE2_ADULT_GROUP_B_FIELD_NAMES,
+        STAGE2_OLDER_FIELD_NAMES,
+        STAGE2_OLDER_GROUP_A_FIELD_NAMES,
+        STAGE2_OLDER_GROUP_B_FIELD_NAMES,
+    )
+
+    assert STAGE2_ADULT_GROUP_A_FIELD_NAMES.isdisjoint(STAGE2_ADULT_GROUP_B_FIELD_NAMES)
+    assert (
+        STAGE2_ADULT_GROUP_A_FIELD_NAMES | STAGE2_ADULT_GROUP_B_FIELD_NAMES
+    ) == STAGE2_ADULT_FIELD_NAMES
+    assert STAGE2_OLDER_GROUP_A_FIELD_NAMES.isdisjoint(STAGE2_OLDER_GROUP_B_FIELD_NAMES)
+    assert (
+        STAGE2_OLDER_GROUP_A_FIELD_NAMES | STAGE2_OLDER_GROUP_B_FIELD_NAMES
+    ) == STAGE2_OLDER_FIELD_NAMES
 
 
 @pytest.mark.integration
