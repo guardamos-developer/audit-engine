@@ -51,7 +51,8 @@ def audit_plan(user_prompt: str, ai_response: str) -> dict:
             # (extra OpenAI call and latency).
             # "skip_layer3": False,
         },
-        timeout=10,
+        # Full audits often take ~8–13s; allow headroom for slower outliers.
+        timeout=30,
     )
     response.raise_for_status()
     return response.json()
@@ -63,6 +64,26 @@ def audit_plan(user_prompt: str, ai_response: str) -> dict:
 skips the optional LLM `layer3_response`. Omit the field or leave it `true`
 for lower latency; set `"skip_layer3": false` when you want the Layer3
 narrative.
+
+### Latency expectations (hosted API)
+
+Measured on the production endpoint after warm-up (`skip_layer3=true`,
+client wall time, 12 runs per case, Oregon host). Treat these as
+**order-of-magnitude guidance**, not an SLA — OpenAI latency varies.
+
+| Path | Typical (p50) | Notes |
+|---|---|---|
+| Early-exit (`rejected` at the population gate, e.g. injury / frailty) | **~3.5–5 s** | Stage-2 extraction is skipped |
+| Full evaluation (`pass` / `flagged`, stage 2 runs) | **~8–13 s** | ACSM pass ≈ 12 s p50; flagged ≈ 9 s; older-adult full path ≈ 8 s |
+| Slower outliers | **>15 s** (occasionally ~18–20 s) | p95 on ACSM pass was ~18 s in the same run |
+
+**Integration recommendation:** do **not** block your end-user UI on a
+synchronous spinner waiting for `/audit`. Prefer an asynchronous pattern —
+enqueue the audit after your own model returns, continue your product
+flow, and surface the verdict via a completion notification, webhook, or
+background job. If you must call synchronously from a backend worker,
+use a timeout of at least **~30 s** and treat timeouts / 5xx as
+non-blocking for the user-facing path.
 
 See [`examples/integration_example.py`](examples/integration_example.py)
 for a complete, runnable version, including error handling for when the

@@ -1,11 +1,24 @@
 #!/usr/bin/env python3
 """Minimal Guardamos hosted-API integration example.
 
-Typical placement: after your own AI generates a training plan and before
-you show that plan to your end user. This call is intended as a
-development-time / pre-deployment check — keep timeouts short and treat
-audit-service failures as non-blocking so your own request path is never
-held indefinitely.
+Typical placement: after your own AI generates a training plan. Prefer an
+*asynchronous* integration (enqueue → notify on completion / background
+worker) rather than a synchronous loading spinner in the end-user UI —
+full audits commonly take several seconds (see latency notes below).
+
+This call is intended as a development-time / pre-deployment check.
+Treat audit-service failures and timeouts as non-blocking so your own
+request path is never held indefinitely.
+
+Latency guidance (hosted production, warm process, ``skip_layer3=true``,
+client wall time; order-of-magnitude, not an SLA):
+
+- Early-exit ``rejected`` (population gate): typically ~3.5–5 s
+- Full evaluation (``pass`` / ``flagged``): typically ~8–13 s
+- Occasional outliers above ~15 s (rarely ~18–20 s)
+
+Use a client timeout of at least ~30 s if you call synchronously from a
+backend worker.
 
 Requires:
   - GUARDAMOS_API_KEY in the environment (issued after Stripe checkout)
@@ -28,9 +41,9 @@ AUDIT_URL = os.environ.get(
     "GUARDAMOS_AUDIT_URL",
     "https://guardamos-audit-engine.onrender.com/audit",
 )
-# Keep this short: Free/Starter hosts may cold-start, but your product path
-# should not wait indefinitely for an external audit service.
-DEFAULT_TIMEOUT_SECONDS = float(os.environ.get("GUARDAMOS_AUDIT_TIMEOUT", "10"))
+# Full audits often take ~8–13s with slower outliers; allow headroom.
+# Prefer async/background calling so this timeout is not a UX spinner.
+DEFAULT_TIMEOUT_SECONDS = float(os.environ.get("GUARDAMOS_AUDIT_TIMEOUT", "30"))
 
 
 class GuardamosAuditError(Exception):
