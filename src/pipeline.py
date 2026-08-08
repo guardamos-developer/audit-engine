@@ -85,6 +85,22 @@ def _apply_raw_text_verdict_overrides(
         "extraction may have missed an explicit clue" in w
         for w in (extraction.get("extraction_warnings") or [])
     )
+    # Belt-and-suspenders (B2): only downgrade when the cue target fields were
+    # actually queried this request. Warnings should already be filtered at
+    # generation time; this guards stubs / older call paths.
+    queried = extraction.get("queried_fields")
+    if queried is not None:
+        q = set(queried)
+        cue_targets_queried = bool(
+            q
+            & {
+                "sessions_per_week",
+                "frequency_days_per_week",
+                "rest_days_per_week",
+            }
+        )
+        if not cue_targets_queried:
+            missed_cue = False
     if missed_cue and result["verdict"] == "pass":
         result["verdict"] = "insufficient_data"
         result["checked_facts"] = []

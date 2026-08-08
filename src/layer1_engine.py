@@ -75,6 +75,8 @@ ACTIVE_RULE_IDS = frozenset(
         "L1-RT-NSCA-0013",
         "L1-RT-NSCA-0014",
         "L1-RT-NSCA-0015",
+        # NSCA older-adult mirror of ACSM frequency rule L1-RT-0002
+        "L1-RT-NSCA-0016",
     }
 )
 

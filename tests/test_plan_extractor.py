@@ -280,6 +280,7 @@ def test_missed_rest_cue_warns_when_rest_days_null():
     warnings = _check_missed_frequency_rest_cues(
         "Train every single day, no rest ever.",
         {"sessions_per_week": 7},
+        queried_fields={"rest_days_per_week", "sessions_per_week"},
     )
     assert len(warnings) == 1
     assert "rest_days_per_week" in warnings[0]
@@ -290,6 +291,7 @@ def test_missed_session_cue_warns_when_sessions_null():
     warnings = _check_missed_frequency_rest_cues(
         "Train 7 days a week with progressive overload.",
         {},
+        queried_fields={"sessions_per_week", "frequency_days_per_week"},
     )
     assert any("sessions_per_week" in w for w in warnings)
 
@@ -298,8 +300,64 @@ def test_no_missed_cue_when_fields_populated():
     warnings = _check_missed_frequency_rest_cues(
         "Train every single day, no rest ever.",
         {"sessions_per_week": 7, "rest_days_per_week": 0},
+        queried_fields={"sessions_per_week", "rest_days_per_week"},
     )
     assert warnings == []
+
+
+def test_missed_cue_skipped_when_frequency_fields_not_queried():
+    """Stage1-only / early-exit: frequency cues must not warn if never asked."""
+    warnings = _check_missed_frequency_rest_cues(
+        "Suggest 3 sessions per week, 3 sets, rest 2 minutes.",
+        {},
+        queried_fields=STAGE1_FIELD_NAMES,
+    )
+    assert warnings == []
+
+
+def test_pipeline_missed_cue_override_requires_queried_frequency_fields():
+    """B2: do not downgrade pass→insufficient_data when sessions were never queried."""
+    from src.pipeline import _apply_raw_text_verdict_overrides
+
+    result = {
+        "verdict": "pass",
+        "matched_rules": [],
+        "checked_facts": [{"rule_id": "L1-RT-NSCA-0002", "text": "ok"}],
+        "layer3_response": None,
+        "summary": "1 checks passed, 0 flagged.",
+    }
+    extraction = {
+        "extraction_warnings": [
+            "ai_response contains a clear training-frequency cue "
+            "('3 sessions per week') but sessions_per_week "
+            "(and frequency_days_per_week) were left null; extraction may "
+            "have missed an explicit clue"
+        ],
+        "queried_fields": sorted(STAGE1_FIELD_NAMES),
+        "possible_meta_instruction_detected": False,
+    }
+    out = _apply_raw_text_verdict_overrides(result, extraction, [])
+    assert out["verdict"] == "pass"
+    assert len(out["checked_facts"]) == 1
+
+
+def test_older_stage2_group_a_includes_frequency_fields():
+    from src.plan_extractor import (
+        STAGE2_OLDER_FIELD_NAMES,
+        STAGE2_OLDER_GROUP_A_FIELD_NAMES,
+        build_stage2_group_schema,
+    )
+
+    for name in (
+        "sessions_per_week",
+        "rest_days_per_week",
+        "frequency_days_per_week",
+        "rest_minutes",
+    ):
+        assert name in STAGE2_OLDER_FIELD_NAMES
+        assert name in STAGE2_OLDER_GROUP_A_FIELD_NAMES
+    schema_json = json.dumps(build_stage2_group_schema("older_adult_healthy", "a"))
+    assert "sessions_per_week" in schema_json
 
 
 def test_merge_raw_stage_outputs_does_not_overwrite_stage1_keys():
@@ -426,3 +484,30 @@ def test_live_extraction_critical_exclusion_flags(case_name, critical_flags):
         assert result["extraction_evidence"].get(flag), (
             f"CRITICAL: {flag!r} was set without evidence_quote"
         )
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    not os.environ.get("OPENAI_API_KEY"),
+    reason="OPENAI_API_KEY not set — skipping live extraction integration test",
+)
+def test_live_older_adult_extracts_sessions_per_week():
+    """Live regression: older stage-2 must query and fill sessions_per_week.
+
+    Fake recorded fixtures cannot catch a field-assignment miss (the bug that
+    left sessions_per_week out of older stage-2 after two-stage split).
+    """
+    result = extract_plan(
+        "I'm 70 years old, healthy, no frailty. Please give me a gentle "
+        "strength plan.",
+        "For a healthy older adult: 3 sessions per week, 2 sets of 10 reps at "
+        "about 75% of 1RM, rest 2 minutes, machines and simple exercises. "
+        "Do not train to failure.",
+    )
+    assert result.get("effective_population") == "older_adult_healthy"
+    assert result.get("stage2_ran") is True
+    assert "sessions_per_week" in (result.get("queried_fields") or [])
+    assert result["plan"].get("sessions_per_week") == 3, result["plan"]
+    assert result["extraction_evidence"].get("sessions_per_week")
+    warnings = result.get("extraction_warnings") or []
+    assert not any("missed an explicit clue" in w for w in warnings), warnings

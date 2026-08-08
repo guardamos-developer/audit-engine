@@ -216,11 +216,17 @@ STAGE1_FIELD_NAMES: frozenset[str] = frozenset(
 )
 
 # Shared training / caution fields referenced by both ACSM and NSCA rulesets.
+# Frequency / rest metrics are shared: ACSM L1-RT-0002 and NSCA L1-RT-NSCA-0016
+# both need sessions_per_week; cue-check also keys off these fields.
 STAGE2_SHARED_FIELD_NAMES: frozenset[str] = frozenset(
     {
         "sets_per_exercise",
         "repetitions_per_set",
         "load_percent_1RM",
+        "sessions_per_week",
+        "rest_days_per_week",
+        "frequency_days_per_week",
+        "rest_minutes",
         "program_mandates_training_to_failure",
         "program_mandates_complex_periodization_as_required",
         "output_recommends_zero_resistance_training_for_muscle_function_goal",
@@ -231,12 +237,8 @@ STAGE2_ADULT_ONLY_FIELD_NAMES: frozenset[str] = frozenset(
     {
         "goal",
         "experience_level",
-        "sessions_per_week",
         "weekly_sets_per_muscle_group",
         "intensity_percent_1RM",
-        "rest_minutes",
-        "rest_days_per_week",
-        "frequency_days_per_week",
         "reps",
         "inactivity_duration_weeks",
         "weeks_since_return",
@@ -588,7 +590,11 @@ re-extract them. Do NOT extract Table 3 condition/accommodation fields
 (those belong to group B).
 
 S2O-A1. Table 1 metrics when evidenced: sets_per_exercise, repetitions_per_set,
-   load_percent_1RM.
+   load_percent_1RM, sessions_per_week, frequency_days_per_week,
+   rest_days_per_week, rest_minutes.
+   - Prefer explicit counts ("3 sessions per week", "2 rest days",
+     "rest 2 minutes"). frequency_days_per_week is an alias cue for
+     weekly training days when sessions_per_week is not stated separately.
 
 S2O-A2. program_mandates_training_to_failure /
    program_mandates_complex_periodization_as_required /
@@ -607,7 +613,8 @@ _SYSTEM_PROMPT_STAGE2_OLDER_GROUP_B = """
 Stage-2 group B for older_adult_healthy — NSCA Table 3 only:
 Population and exclusion flags are already finalized in stage 1 — do NOT
 re-extract them (including osteoporosis_present / frailty_present). Do NOT
-extract Table 1 metrics (sets/reps/load) or caution mirrors (group A).
+extract Table 1 metrics (sets/reps/load/frequency/rest) or caution mirrors
+(group A).
 
 S2O-B1. NSCA Table 3 condition / context flags (mobility_limitation_present,
     cognitive_impairment_present, diabetes_present,
@@ -898,18 +905,37 @@ def _cue_snippet(text: str, match: re.Match[str], *, radius: int = 40) -> str:
 
 
 def _check_missed_frequency_rest_cues(
-    ai_response: str, plan: dict[str, Any]
+    ai_response: str,
+    plan: dict[str, Any],
+    *,
+    queried_fields: frozenset[str] | set[str] | None = None,
 ) -> list[str]:
     """Warn when ai_response has clear frequency/rest cues but fields stayed null.
+
+    Only considers fields that were actually requested from the LLM in this
+    request (``queried_fields``). Fields never queried (e.g. stage-1-only
+    early-exit, or a population that does not ask for frequency) do not warn —
+    that is not an extraction miss.
 
     Does not invent values — only records that extraction may have missed an
     explicit clue in the source text.
     """
     warnings: list[str] = []
     text = ai_response or ""
+    queried = set(queried_fields) if queried_fields is not None else None
+
+    def _was_queried(*names: str) -> bool:
+        if queried is None:
+            # Backward compat for direct unit-test callers without queried_fields.
+            return True
+        return any(name in queried for name in names)
 
     rest_match = _REST_DAY_CUE_RE.search(text)
-    if rest_match is not None and plan.get("rest_days_per_week") is None:
+    if (
+        rest_match is not None
+        and plan.get("rest_days_per_week") is None
+        and _was_queried("rest_days_per_week")
+    ):
         warnings.append(
             "ai_response contains a clear rest-day cue "
             f"({_cue_snippet(text, rest_match)!r}) but rest_days_per_week "
@@ -921,7 +947,11 @@ def _check_missed_frequency_rest_cues(
         plan.get("sessions_per_week") is None
         and plan.get("frequency_days_per_week") is None
     )
-    if session_match is not None and sessions_missing:
+    if (
+        session_match is not None
+        and sessions_missing
+        and _was_queried("sessions_per_week", "frequency_days_per_week")
+    ):
         warnings.append(
             "ai_response contains a clear training-frequency cue "
             f"({_cue_snippet(text, session_match)!r}) but sessions_per_week "
@@ -1059,11 +1089,17 @@ def fields_left_null_without_evidence(
 def _finalize_extraction_from_merged_raw(
     merged_raw: dict[str, Any],
     ai_response: str,
+    *,
+    queried_fields: frozenset[str] | set[str] | None = None,
 ) -> dict[str, Any]:
     """Materialize once from a merged raw dict and apply post-checks."""
     plan, evidence = _materialize_plan_and_evidence(merged_raw)
     plan, evidence, warnings = _apply_consistency_checks(plan, evidence)
-    warnings.extend(_check_missed_frequency_rest_cues(ai_response, plan))
+    warnings.extend(
+        _check_missed_frequency_rest_cues(
+            ai_response, plan, queried_fields=queried_fields
+        )
+    )
     plan = _assemble_plan_week_parameters(plan)
     meta_detected, meta_evidence = _materialize_meta_instruction(merged_raw)
     return {
@@ -1136,16 +1172,18 @@ def extract_plan(user_prompt: str, ai_response: str, *, client: Any = None) -> d
     stage1_ms = ms_since(stage1_t0)
 
     # Materialize stage-1-only plan for the population gate (no stage-2 fields).
+    stage1_queried = queried_field_names_for_stages(
+        stage2_population=None, stage2_ran=False
+    )
     stage1_merged = merge_raw_stage_outputs(raw1, None)
-    stage1_result = _finalize_extraction_from_merged_raw(stage1_merged, ai_response)
+    stage1_result = _finalize_extraction_from_merged_raw(
+        stage1_merged, ai_response, queried_fields=stage1_queried
+    )
     gate = evaluate_primary_population_gates(stage1_result["plan"])
     population = gate["effective_population"]
 
     if gate["rejected"]:
-        queried = queried_field_names_for_stages(
-            stage2_population=None, stage2_ran=False
-        )
-        stage1_result["queried_fields"] = sorted(queried)
+        stage1_result["queried_fields"] = sorted(stage1_queried)
         stage1_result["stage2_ran"] = False
         stage1_result["effective_population"] = population
         stage1_result["_timing"] = {
@@ -1199,9 +1237,11 @@ def extract_plan(user_prompt: str, ai_response: str, *, client: Any = None) -> d
     merged["possible_meta_instruction_detected"] = meta_detected
     merged["meta_instruction_evidence"] = meta_evidence
 
-    result = _finalize_extraction_from_merged_raw(merged, ai_response)
     queried = queried_field_names_for_stages(
         stage2_population=population, stage2_ran=True
+    )
+    result = _finalize_extraction_from_merged_raw(
+        merged, ai_response, queried_fields=queried
     )
     result["queried_fields"] = sorted(queried)
     result["stage2_ran"] = True
@@ -1223,8 +1263,11 @@ def extract_plan_union_schema(
     Kept for migration / debugging. Prefer ``extract_plan`` (two-stage).
     """
     raw = _call_structured_extraction(user_prompt, ai_response, client=client)
-    result = _finalize_extraction_from_merged_raw(raw, ai_response)
-    result["queried_fields"] = sorted(_PLAN_FIELD_SPECS)
+    queried = frozenset(_PLAN_FIELD_SPECS)
+    result = _finalize_extraction_from_merged_raw(
+        raw, ai_response, queried_fields=queried
+    )
+    result["queried_fields"] = sorted(queried)
     result["stage2_ran"] = False
     result["effective_population"] = None
     result["_timing"] = {

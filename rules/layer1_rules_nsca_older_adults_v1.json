@@ -700,14 +700,59 @@
       "version": "1.0",
       "last_reviewed": "2026-08-07",
       "verification_status": "verified"
+    },
+    {
+      "rule_id": "L1-RT-NSCA-0016",
+      "layer": 1,
+      "domain": "resistance_training",
+      "rule_type": "evidence_alignment",
+      "source": {
+        "document": "NSCA 2019 Position Statement (Fragala et al.)",
+        "section": "Table 1 (Frequency), p.2025 (pending visual confirmation)",
+        "year": 2019,
+        "note": "ACSM's general-adult frequency rule (L1-RT-0002, sessions_per_week < 2) does not fire for older_adult_healthy due to population exclusivity routing. This rule restores equivalent coverage for older adults, using Table 1's own frequency recommendation rather than relying on the ACSM rule."
+      },
+      "applicability": {
+        "population": ["older_adult_healthy"],
+        "excludes": [
+          "injury_present",
+          "post_surgical",
+          "pain_present",
+          "minor",
+          "pregnant",
+          "frailty_present"
+        ]
+      },
+      "condition": {
+        "type": "numeric_threshold",
+        "check": "sessions_per_week < min_sessions",
+        "parameters": {
+          "min_sessions": 2
+        }
+      },
+      "action": "flag_suboptimal",
+      "reason_template": {
+        "flagged": {
+          "en": "For healthy older adults, Table 1 recommends training 2-3 nonconsecutive days per week per muscle group. The current setting ({observed_value} session(s)/week) falls below this range.",
+          "pt": "Para idosos saudáveis, a Tabela 1 recomenda treinar 2-3 dias não consecutivos por semana por grupo muscular. A configuração atual ({observed_value} sessão(ões)/semana) está abaixo deste intervalo.",
+          "ja": "健康な高齢者の場合、Table1では週2-3日(非連続日)/筋群でのトレーニングが推奨されています。現在の設定({observed_value}回/週)はこの範囲を下回っています。"
+        },
+        "pass": {
+          "en": "Training frequency ({observed_value} session(s)/week) falls within the range Table 1 recommends for healthy older adults."
+        }
+      },
+      "severity": "low",
+      "version": "1.0",
+      "last_reviewed": "2026-08-08",
+      "verification_status": "pending_source_check"
     }
   ],
   "ruleset_notes": {
     "verification_status_meaning": "pending_source_check = extracted by LLM, not yet manually cross-checked against the source PDF. verified = manually confirmed against source.",
     "population_classification_design": "target_population is a mutually exclusive classification, not a set of co-occurring tags. When age routes a case to older_adult_healthy (provisional threshold: age >= 65), healthy_adult_18plus (ACSM ruleset) must NOT also be set for the same case, to prevent both rulesets firing simultaneously with conflicting numeric thresholds (e.g. L1-RT-0003 vs L1-RT-NSCA-0002).",
-    "deferred_items": "Nonconsecutive-day frequency check deferred: plan_extractor has no field distinguishing consecutive vs nonconsecutive training days, so this would always resolve to null/unevaluable. Revisit if such a field is added. Exercise-count (8-10) and modality (machine vs free-weight) rules also deferred as advisory/descriptive rather than prescriptive thresholds.",
+    "deferred_items": "Nonconsecutive-day frequency check deferred: plan_extractor has no field distinguishing consecutive vs nonconsecutive training days, so this would always resolve to null/unevaluable. Revisit if such a field is added. Exercise-count (8-10) and modality (machine vs free-weight) rules also deferred as advisory/descriptive rather than prescriptive thresholds. L1-RT-NSCA-0016 covers the minimum weekly session count only (sessions_per_week < 2), not the nonconsecutive-day constraint.",
     "extraction_confidence_asymmetry": "Table 3 accommodation fields (whether a plan indicates a specific safety/modification measure, e.g. blood_glucose_monitoring_mentioned, rom_restricted_training_mentioned) require semantic judgment from plan_extractor, unlike Table 1's numeric fields which are near-mechanical extraction. Because a false positive here (incorrectly marking an accommodation as present) causes the rule to incorrectly return pass -- a more dangerous failure mode than a false negative (which resolves to insufficient_data for human review) -- these fields use a stricter null-if-uncertain policy: mark true only on clear, explicit textual evidence; ambiguous or suggestive language resolves to null, not true or false.",
-    "population_exclusivity_gap_fix": "L1-RT-NSCA-0012 through 0015 were added after discovering that the population-exclusivity design (L1-RT-0001 gate logic) silently drops ACSM's general-adult caution rules L1-RT-0007 through 0010 for any plan routed to older_adult_healthy, since those ACSM rules only declare population: healthy_adult_18plus. These 4 new rules restore equivalent coverage for older adults, each backed by older-adult-specific evidence from the NSCA source rather than a blind copy of the ACSM rule.",
+    "population_exclusivity_gap_fix": "L1-RT-NSCA-0012 through 0015 were added after discovering that the population-exclusivity design (L1-RT-0001 gate logic) silently drops ACSM's general-adult caution rules L1-RT-0007 through 0010 for any plan routed to older_adult_healthy, since those ACSM rules only declare population: healthy_adult_18plus. These 4 new rules restore equivalent coverage for older adults, each backed by older-adult-specific evidence from the NSCA source rather than a blind copy of the ACSM rule. The same gap was later found for frequency: ACSM L1-RT-0002 (sessions_per_week < 2) is healthy_adult_18plus-only and has no NSCA counterpart, so older_adult_healthy plans with low training frequency were never flagged. L1-RT-NSCA-0016 restores that coverage from Table 1's frequency recommendation (pending_source_check).",
     "lenient_exclusion_euphemism_limit": "Exclusion flags such as frailty_present cannot reliably be inferred from euphemistic fitness-decline language alone (e.g. 'I don't have as much stamina as I used to' / 'not as much stamina as before') when the text never clearly signals frailty or a numeric age. When age_years is stated, deterministic age routing still applies; when neither a clear frailty cue nor an age signal is present, the case may slip past the population gate and be evaluated under the default healthy_adult_18plus / older_adult_healthy path as if in-scope. This is a known extractor limitation (open-ended natural language), not a gap in the numeric rule logic itself."
   }
 }

@@ -394,3 +394,29 @@ def test_ruleset_notes_include_population_exclusivity_gap_fix():
     note = raw["ruleset_notes"]["population_exclusivity_gap_fix"]
     assert "L1-RT-NSCA-0012" in note
     assert "L1-RT-0007" in note
+    assert "L1-RT-NSCA-0016" in note
+    assert "L1-RT-0002" in note
+
+
+def test_older_adult_low_frequency_flags_nsca_0016_not_acsm_0002():
+    plan = _in_range_older_adult(sessions_per_week=1)
+    ids = {m["rule_id"] for m in evaluate_layer1(plan)}
+    assert "L1-RT-NSCA-0016" in ids
+    assert "L1-RT-0002" not in ids
+
+
+def test_general_adult_low_frequency_flags_acsm_0002_not_nsca_0016():
+    plan = _in_range_general_adult(sessions_per_week=1)
+    ids = {m["rule_id"] for m in evaluate_layer1(plan)}
+    assert "L1-RT-0002" in ids
+    assert "L1-RT-NSCA-0016" not in ids
+
+
+def test_older_adult_adequate_frequency_does_not_flag_0016():
+    plan = _in_range_older_adult(sessions_per_week=3)
+    ids = {m["rule_id"] for m in evaluate_layer1(plan)}
+    assert "L1-RT-NSCA-0016" not in ids
+    audit = run_audit(plan, lang="en", skip_layer3=True)
+    assert audit["verdict"] == "pass"
+    checked = {c["rule_id"] for c in audit.get("checked_facts") or []}
+    assert "L1-RT-NSCA-0016" in checked
