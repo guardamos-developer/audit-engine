@@ -837,7 +837,8 @@
       "domain": "resistance_training",
       "rule_type": "qualitative_caution_signal",
       "source": {
-        "document": "N/A",
+        "document": "CSCCa/NSCA Joint Consensus Guidelines (Caterisano et al. 2019)",
+        "section": "No direct table/page citation — qualitative fallback within the same framework, not a numeric threshold from Table 9",
         "note": "This rule does not verify numeric guideline compliance. It records that the plan expressed load/volume caution in relative terms, which the current schema cannot numerically compare to Table 9 thresholds without a baseline value. Motivating case: long-inactivity (and similar) returns where absolute Table 9 fields are absent; the same qualitative signal also covers moderate-return / acute-soreness replies that only use relative language."
       },
       "applicability": {
